@@ -1,5 +1,31 @@
 import React, { useEffect, useMemo, useState, useEffect as useEffectAlias } from "react";
 import BallPit from "./Backgrounds/Ballpit/Ballpit";
+import ProfileCard from "./Components/ProfileCard/ProfileCard";
+
+// ========= iOS 자이로/모션 권한 요청 (사용자 제스처 안에서 호출 필요) =========
+let _motionAsked = false;
+async function requestMotionPermission() {
+  if (_motionAsked) return;
+  _motionAsked = true;
+
+  // DeviceOrientation (방향)
+  try {
+    const DO = window.DeviceOrientationEvent;
+    if (DO && typeof DO.requestPermission === "function") {
+      const s = await DO.requestPermission(); // 'granted' | 'denied' | 'prompt'
+      console.log("DeviceOrientation permission:", s);
+    }
+  } catch (e) {}
+
+  // DeviceMotion (가속도/자이로)
+  try {
+    const DM = window.DeviceMotionEvent;
+    if (DM && typeof DM.requestPermission === "function") {
+      const s = await DM.requestPermission();
+      console.log("DeviceMotion permission:", s);
+    }
+  } catch (e) {}
+}
 
 // ========= 유틸 =========
 const cx = (...classes) => classes.filter(Boolean).join(" ");
@@ -366,6 +392,7 @@ export default function App() {
           <div className="pointer-events-none absolute -inset-6 md:-inset-10 rounded-[2rem] bg-[radial-gradient(60%_50%_at_22%_28%,rgba(0,0,0,0.55),transparent_60%)]" />
 
           <div className="relative z-10 flex flex-col items-start gap-6 md:flex-row md:items-end md:justify-between">
+            {/* 왼쪽: 타이틀/설명/버튼 */}
             <div>
               <h1
                 className="max-w-2xl text-4xl font-bold leading-tight text-white md:text-6xl"
@@ -400,68 +427,39 @@ export default function App() {
               </div>
             </div>
 
-            <div className={cx("mt-6 w-full rounded-2xl p-5 md:mt-0 md:w-[420px]", glass)}>
-              <p className="text-xs uppercase tracking-widest text-white/70">Expertise</p>
-              <ul className="mt-2 grid list-disc grid-cols-2 gap-x-6 gap-y-1 pl-4 text-sm text-white/90 md:grid-cols-1">
-                <li>Projection Mapping</li>
-                <li>Realtime Graphics</li>
-                <li>Interactive Installations</li>
-                <li>Multi-Screen/LED</li>
-                <li>Sensor Fusion</li>
-              </ul>
+            {/* 오른쪽: ProfileCard (모바일 틸트 ON) */}
+            <div
+              className="mt-6 w-full md:mt-0 md:w-[420px] tilt-wrap"
+              onClick={requestMotionPermission}       // iOS 권한 팝업 (탭 시)
+              onTouchStart={requestMotionPermission}  // iOS 사파리: 터치 시작에도 요청
+            >
+              <ProfileCard
+                // 핵심 옵션
+                enableTilt={true}
+                enableMobileTilt={true}
+                mobileTiltSensitivity={5}
+
+                // 비주얼(원하면 바꿔도 됨)
+                name="TheRenderStudio"
+                title="Media Art & Interactive"
+                handle="therenderstudio"
+                status="Online"
+                contactText="Contact"
+                avatarUrl="/assets/person.png"
+                miniAvatarUrl="/assets/person.png"
+                iconUrl="/assets/iconpattern.png"
+                grainUrl="/assets/grain.webp"
+
+                // 배경 그라데이션(샘플)
+                showBehindGradient={true}
+                behindGradient="radial-gradient(farthest-side circle at var(--pointer-x) var(--pointer-y),hsla(266,100%,90%,var(--card-opacity)) 4%,hsla(266,50%,80%,calc(var(--card-opacity)*0.75)) 10%,hsla(266,25%,70%,calc(var(--card-opacity)*0.5)) 50%,hsla(266,0%,60%,0) 100%),radial-gradient(35% 52% at 55% 20%,#00ffaac4 0%,#073aff00 100%),radial-gradient(100% 100% at 50% 50%,#00c1ffff 1%,#073aff00 76%),conic-gradient(from 124deg at 50% 50%,#c137ffff 0%,#07c6ffff 40%,#07c6ffff 60%,#c137ffff 100%)"
+                innerGradient="linear-gradient(145deg,#60496e8c 0%,#71C4FF44 100%)"
+
+                // 필요시 추가 클래스
+                className="select-none will-change-transform"
+              />
             </div>
           </div>
-        </div>
-      </Section>
-
-      {/* PROJECTS */}
-      <Section id="projects">
-        <div className="mb-8 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
-          <div>
-            <h2
-              className="text-3xl font-bold text-white md:text-4xl"
-              style={{ textShadow: "0 2px 12px rgba(0,0,0,.75)" }}
-            >
-              Selected Projects
-            </h2>
-            <p
-              className="mt-2 max-w-2xl text-white/80"
-              style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}
-            >
-              최근 작업을 월별로 간단히 업데이트합니다. 상단 검색/태그로 빠르게 찾아보세요.
-            </p>
-          </div>
-          <div className="flex w-full flex-col items-stretch gap-3 md:w-auto md:flex-row md:items-center">
-            <input
-              type="search"
-              placeholder="Search…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-2xl border border-white/15 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 md:w-64"
-            />
-            <div className="flex flex-wrap gap-2">
-              {[...new Set(["All", ...projects.flatMap((p) => p.tags || [])])].map(
-                (t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTag(t)}
-                    className={cx(
-                      "rounded-full px-3 py-1 text-xs",
-                      t === tag ? "bg-white text-black" : brand.chip
-                    )}
-                  >
-                    {t}
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
-            <ProjectCard key={p.id} item={p} onOpen={setActive} />
-          ))}
         </div>
       </Section>
 
@@ -568,8 +566,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-
-      {/* (BubbleMenu 제거됨) */}
 
       {/* PROJECT MODAL */}
       <Modal open={!!active} onClose={() => setActive(null)}>

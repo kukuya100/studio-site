@@ -32,3 +32,11 @@ body {
 .scrim-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+
+.tilt-wrap {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  /* 모바일 스크롤 제스처 유지 */
+  touch-action: pan-y;
+}
