@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useEffect as useEffectAlias } from "react";
 import BallPit from "./Backgrounds/Ballpit/Ballpit";
 import ProfileCard from "./Components/ProfileCard/ProfileCard";
+import "./Components/ProfileCard/ProfileCard.css";
 
 import person from "./assets/person.png";
 import iconpattern from "./assets/iconpattern.png";
