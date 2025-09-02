@@ -1,44 +1,10 @@
-import React, { useEffect, useMemo, useState, useEffect as useEffectAlias } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import BallPit from "./Backgrounds/Ballpit/Ballpit";
-import ProfileCard from "./Components/ProfileCard/ProfileCard";
-import "./Components/ProfileCard/ProfileCard.css";
-
-import person from "./assets/person.png";
-import iconpattern from "./assets/iconpattern.png";
-import grain from "./assets/grain.webp";
-
-// ========= iOS 자이로/모션 권한 요청 (사용자 제스처 안에서 호출 필요) =========
-let _motionAsked = false;
-async function requestMotionPermission() {
-  if (_motionAsked) return;
-  _motionAsked = true;
-
-  // DeviceOrientation (방향)
-  try {
-    const DO = window.DeviceOrientationEvent;
-    if (DO && typeof DO.requestPermission === "function") {
-      const s = await DO.requestPermission(); // 'granted' | 'denied' | 'prompt'
-      console.log("DeviceOrientation permission:", s);
-    }
-  } catch (e) {}
-
-  // DeviceMotion (가속도/자이로)
-  try {
-    const DM = window.DeviceMotionEvent;
-    if (DM && typeof DM.requestPermission === "function") {
-      const s = await DM.requestPermission();
-      console.log("DeviceMotion permission:", s);
-    }
-  } catch (e) {}
-}
 
 // ========= 유틸 =========
 const cx = (...classes) => classes.filter(Boolean).join(" ");
 const glass =
   "backdrop-blur-xl bg-white/5 dark:bg-black/20 border border-white/10 shadow-[0_0_1px_#fff_inset,0_10px_40px_-10px_rgba(0,0,0,0.5)]";
-const brand = {
-  chip: "bg-white/10 text-white/80 border border-white/15 hover:bg-white/15",
-};
 
 // BASE_URL을 사용해 정적 자산 경로 자동 보정
 const resolveAsset = (p) => {
@@ -174,8 +140,6 @@ function Modal({ open, onClose, children }) {
         <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl backdrop-blur-xl bg-white/5 dark:bg-black/20 border border-white/10 shadow-[0_0_1px_#fff_inset,0_10px_40px_-10px_rgba(0,0,0,0.5)]">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <h3 className="text-base font-semibold text-white">Project</h3>
-
-            {/* ✖️ 가독성 높은 닫기 버튼 */}
             <button
               onClick={onClose}
               className="group inline-flex h-10 w-10 items-center justify-center rounded-lg
@@ -185,23 +149,11 @@ function Modal({ open, onClose, children }) {
               aria-label="Close"
               title="Close"
             >
-              <svg
-                viewBox="0 0 24 24"
-                width="18"
-                height="18"
-                className="block"
-                aria-hidden="true"
-              >
-                <path
-                  d="M6 6l12 12M18 6L6 18"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
+              <svg viewBox="0 0 24 24" width="18" height="18" className="block" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </button>
           </div>
-
           <div className="max-h-[78vh] overflow-y-auto p-4">{children}</div>
         </div>
       </div>
@@ -228,9 +180,7 @@ function ProjectCard({ item, onOpen }) {
       </div>
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4">
         <div className="text-left">
-          <h4 className="text-lg font-semibold text-white drop-shadow">
-            {item.title}
-          </h4>
+          <h4 className="text-lg font-semibold text-white drop-shadow">{item.title}</h4>
           <p className="text-xs text-white/70">
             {item.client} · {item.year}
           </p>
@@ -268,9 +218,7 @@ function ProjectGallery({ item }) {
               <Badge key={t}>{t}</Badge>
             ))}
           </div>
-          <p className="prose prose-invert mt-4 max-w-none text-white/80">
-            {item.description}
-          </p>
+          <p className="prose prose-invert mt-4 max-w-none text-white/80">{item.description}</p>
         </div>
         {item.summary && (
           <div className={cx("rounded-2xl p-5", glass)}>
@@ -285,7 +233,7 @@ function ProjectGallery({ item }) {
 
 // ========= 메인 =========
 export default function App() {
-  useViewportCeil(); // 스크림이 "커질 때만 확장"되도록
+  useViewportCeil();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [projects, setProjects] = useState(SAMPLE_PROJECTS);
@@ -334,10 +282,9 @@ export default function App() {
           friction={0.9975}
           wallBounce={0.95}
           followCursor
-          // lockPixelRatio
           colors={[0xff3864, 0xffbd2e, 0x7cff6b, 0x3ae7ff, 0x7a5cff, 0xff6ad5]}
           materialParams={{
-            metalness: 0.40,
+            metalness: 0.4,
             roughness: 0.42,
             clearcoat: 0.9,
             clearcoatRoughness: 0.18,
@@ -447,103 +394,76 @@ export default function App() {
               </div>
             </div>
 
-            {/* 오른쪽: ProfileCard (모바일 틸트 ON) */}
-            <div
-              className="mt-6 w-full md:mt-0 md:w-[420px] tilt-wrap"
-              onClick={requestMotionPermission}       // iOS 권한 팝업 (탭 시)
-              onTouchStart={requestMotionPermission}  // iOS 사파리: 터치 시작에도 요청
-            >
-              <ProfileCard
-                // 핵심 옵션
-                enableTilt={true}
-                enableMobileTilt={true}
-                mobileTiltSensitivity={5}
-
-                // 비주얼(원하면 바꿔도 됨)
-                name="TheRenderStudio"
-                title="Media Art & Interactive"
-                handle="therenderstudio"
-                status="Online"
-                contactText="Contact"
-                //avatarUrl="/assets/person.png"
-                //miniAvatarUrl="/assets/person.png"
-                //iconUrl="/assets/iconpattern.png"
-                //grainUrl="/assets/grain.webp"
-                miniAvatarUrl={person}
-                avatarUrl={person}
-                iconUrl={iconpattern}
-                grainUrl={grain}
-
-                
-
-                // 배경 그라데이션(샘플)
-                showBehindGradient={true}
-                behindGradient="radial-gradient(farthest-side circle at var(--pointer-x) var(--pointer-y),hsla(266,100%,90%,var(--card-opacity)) 4%,hsla(266,50%,80%,calc(var(--card-opacity)*0.75)) 10%,hsla(266,25%,70%,calc(var(--card-opacity)*0.5)) 50%,hsla(266,0%,60%,0) 100%),radial-gradient(35% 52% at 55% 20%,#00ffaac4 0%,#073aff00 100%),radial-gradient(100% 100% at 50% 50%,#00c1ffff 1%,#073aff00 76%),conic-gradient(from 124deg at 50% 50%,#c137ffff 0%,#07c6ffff 40%,#07c6ffff 60%,#c137ffff 100%)"
-                innerGradient="linear-gradient(145deg,#60496e8c 0%,#71C4FF44 100%)"
-
-                // 필요시 추가 클래스
-                className="select-none will-change-transform"
-              />
+            {/* 오른쪽: Expertise 카드 (프로필카드 제거됨) */}
+            <div className={cx("mt-6 w-full rounded-2xl p-5 md:mt-0 md:w-[420px]", glass)}>
+              <p className="text-xs uppercase tracking-widest text-white/70">Expertise</p>
+              <ul className="mt-2 grid list-disc grid-cols-2 gap-x-6 gap-y-1 pl-4 text-sm text-white/90 md:grid-cols-1">
+                <li>Projection Mapping</li>
+                <li>Realtime Graphics</li>
+                <li>Interactive Installations</li>
+                <li>Multi-Screen/LED</li>
+                <li>Sensor Fusion</li>
+              </ul>
             </div>
           </div>
         </div>
       </Section>
 
       {/* PROJECTS */}
-<Section id="projects">
-  <div className="mb-8 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
-    <div>
-      <h2
-        className="text-3xl font-bold text-white md:text-4xl"
-        style={{ textShadow: "0 2px 12px rgba(0,0,0,.75)" }}
-      >
-        Selected Projects
-      </h2>
-      <p
-        className="mt-2 max-w-2xl text-white/80"
-        style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}
-      >
-        최근 작업을 월별로 업데이트합니다. 검색/태그로 빠르게 찾아보세요.
-      </p>
-    </div>
+      <Section id="projects">
+        <div className="mb-8 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+          <div>
+            <h2
+              className="text-3xl font-bold text-white md:text-4xl"
+              style={{ textShadow: "0 2px 12px rgba(0,0,0,.75)" }}
+            >
+              Selected Projects
+            </h2>
+            <p
+              className="mt-2 max-w-2xl text-white/80"
+              style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}
+            >
+              최근 작업을 월별로 업데이트합니다. 검색/태그로 빠르게 찾아보세요.
+            </p>
+          </div>
 
-    {/* 검색 + 태그 */}
-    <div className="flex w-full flex-col items-stretch gap-3 md:w-auto md:flex-row md:items-center">
-      <input
-        type="search"
-        placeholder="Search…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="w-full rounded-2xl border border-white/15 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 md:w-64"
-      />
-      <div className="flex flex-wrap gap-2">
-        {tags.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTag(t)}
-            className={
-              t === tag
-                ? "rounded-full px-3 py-1 text-xs bg-white text-black"
-                : "rounded-full px-3 py-1 text-xs bg-white/10 text-white/80 border border-white/15 hover:bg-white/15"
-            }
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-    </div>
-  </div>
+          {/* 검색 + 태그 */}
+          <div className="flex w-full flex-col items-stretch gap-3 md:w-auto md:flex-row md:items-center">
+            <input
+              type="search"
+              placeholder="Search…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full rounded-2xl border border-white/15 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 md:w-64"
+            />
+            <div className="flex flex-wrap gap-2">
+              {[...new Set(["All", ...projects.flatMap((p) => p.tags || [])])].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTag(t)}
+                  className={
+                    t === tag
+                      ? "rounded-full px-3 py-1 text-xs bg-white text-black"
+                      : "rounded-full px-3 py-1 text-xs bg-white/10 text-white/80 border border-white/15 hover:bg-white/15"
+                  }
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-    {filtered.length ? (
-      filtered.map((p) => <ProjectCard key={p.id} item={p} onOpen={setActive} />)
-    ) : (
-      <div className="col-span-full rounded-2xl border border-white/10 p-6 text-center text-white/70">
-        결과가 없습니다.
-      </div>
-    )}
-  </div>
-</Section>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.length ? (
+            filtered.map((p) => <ProjectCard key={p.id} item={p} onOpen={setActive} />)
+          ) : (
+            <div className="col-span-full rounded-2xl border border-white/10 p-6 text-center text-white/70">
+              결과가 없습니다.
+            </div>
+          )}
+        </div>
+      </Section>
 
       {/* SERVICES */}
       <Section id="services" className="py-16">
@@ -598,38 +518,18 @@ export default function App() {
       {/* CONTACT */}
       <Section id="contact" className="py-16">
         <div className={cx("rounded-3xl p-8 text-center", glass)}>
-          <h2
-            className="text-3xl font-bold text-white"
-            style={{ textShadow: "0 2px 12px rgba(0,0,0,.75)" }}
-          >
+          <h2 className="text-3xl font-bold text-white" style={{ textShadow: "0 2px 12px rgba(0,0,0,.75)" }}>
             Let’s build something luminous.
           </h2>
-          <p
-            className="mx-auto mt-3 max-w-2xl text-white/85"
-            style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}
-          >
+          <p className="mx-auto mt-3 max-w-2xl text-white/85" style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}>
             프로젝트 문의를 환영합니다. 간단한 아이디어도 괜찮아요—스케줄/예산에 맞춰 제안서를 드립니다.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Button as="a" href="mailto:hello@therenderstudio.com">
-              hello@therenderstudio.com
-            </Button>
-            <Button
-              as="a"
-              href="https://www.instagram.com/"
-              target="_blank"
-              rel="noreferrer"
-              className="bg-white/20 hover:bg-white/25"
-            >
+            <Button as="a" href="mailto:hello@therenderstudio.com">hello@therenderstudio.com</Button>
+            <Button as="a" href="https://www.instagram.com/" target="_blank" rel="noreferrer" className="bg-white/20 hover:bg-white/25">
               Instagram
             </Button>
-            <Button
-              as="a"
-              href="https://vimeo.com/"
-              target="_blank"
-              rel="noreferrer"
-              className="bg-white/20 hover:bg-white/25"
-            >
+            <Button as="a" href="https://vimeo.com/" target="_blank" rel="noreferrer" className="bg-white/20 hover:bg-white/25">
               Vimeo
             </Button>
           </div>
