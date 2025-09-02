@@ -23,6 +23,11 @@ import {
 } from 'three';
 import { RoomEnvironment as z } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
+/* ------------------------------------------------
+   렌더 엔진 (x)
+   - 초기 뷰포트 기준으로 사이즈/해상도 결정
+   - 주소창 애니메이션 등 사소한 리사이즈 무시
+------------------------------------------------- */
 class x {
   #e;
   canvas;
@@ -50,16 +55,18 @@ class x {
   #h = { elapsed: 0, delta: 0 };
   #l;
 
-  // ---- 추가: 리사이즈 무시/고정 옵션 ----
+  // 안정화 옵션
   ignoreMinorResizes = true;
-  minorResizeThreshold = 120; // px
+  minorResizeThreshold = 120; // px: 이보다 작은 세로 변화는 무시
   lockPixelRatio = false;
-  #lastApplied = { w: 0, h: 0 };
   #initialPixelRatio = null;
+
+  // 기준 사이즈(초기 최대값 유지)
+  #baseline = { w: 0, h: 0 };
+  #lastApplied = { w: 0, h: 0 };
 
   constructor(e) {
     this.#e = { ...e };
-    // 옵션 주입
     if (typeof this.#e.ignoreMinorResizes === 'boolean') this.ignoreMinorResizes = this.#e.ignoreMinorResizes;
     if (typeof this.#e.minorResizeThreshold === 'number') this.minorResizeThreshold = this.#e.minorResizeThreshold;
     if (typeof this.#e.lockPixelRatio === 'boolean') this.lockPixelRatio = this.#e.lockPixelRatio;
@@ -67,9 +74,16 @@ class x {
     this.#m();
     this.#d();
     this.#p();
-    this.resize();
+
+    // 최초 사이즈 계산 (최대값 기반)
+    this.resize(true);
+
+    // UI 관성 애니메이션이 끝난 뒤 한 번 더 보정
+    setTimeout(() => this.resize(true), 600);
+
     this.#g();
   }
+
   #m() {
     this.camera = new t();
     this.cameraFov = this.camera.fov;
@@ -78,13 +92,10 @@ class x {
     this.scene = new i();
   }
   #p() {
-    if (this.#e.canvas) {
-      this.canvas = this.#e.canvas;
-    } else if (this.#e.id) {
-      this.canvas = document.getElementById(this.#e.id);
-    } else {
-      console.error('Three: Missing canvas or id parameter');
-    }
+    if (this.#e.canvas) this.canvas = this.#e.canvas;
+    else if (this.#e.id) this.canvas = document.getElementById(this.#e.id);
+    else console.error('Three: Missing canvas or id parameter');
+
     this.canvas.style.display = 'block';
     const e = {
       canvas: this.canvas,
@@ -102,11 +113,7 @@ class x {
         this.#r.observe(this.canvas.parentNode);
       }
     }
-    this.#o = new IntersectionObserver(this.#u.bind(this), {
-      root: null,
-      rootMargin: '0px',
-      threshold: 0
-    });
+    this.#o = new IntersectionObserver(this.#u.bind(this), { root: null, rootMargin: '0px', threshold: 0 });
     this.#o.observe(this.canvas);
     document.addEventListener('visibilitychange', this.#v.bind(this));
   }
@@ -121,45 +128,80 @@ class x {
     this.#s ? this.#w() : this.#z();
   }
   #v() {
-    if (this.#s) {
-      document.hidden ? this.#z() : this.#w();
-    }
+    if (this.#s) document.hidden ? this.#z() : this.#w();
   }
   #f() {
     if (this.#a) clearTimeout(this.#a);
-    // 주소창 애니메이션 동안 더 묶어주기
     this.#a = setTimeout(this.resize.bind(this), 250);
   }
-  resize() {
-    // 🔒 상호작용 중엔 리사이즈 스킵
-    if (INTERACTING) return;
 
-    let e, t;
-    if (this.#e.size instanceof Object) {
-      e = this.#e.size.width;
-      t = this.#e.size.height;
-    } else if (this.#e.size === 'parent' && this.canvas.parentNode) {
-      e = this.canvas.parentNode.offsetWidth;
-      t = this.canvas.parentNode.offsetHeight;
-    } else {
-      e = window.innerWidth;
-      t = window.innerHeight;
+  // 부모/뷰포트에서 "가장 넓은" 값으로 측정
+  #measure() {
+    // parent 우선
+    const parent = this.canvas.parentNode;
+    const rect = parent?.getBoundingClientRect?.();
+    const fromParent = {
+      w: Math.round(rect?.width || 0),
+      h: Math.round(rect?.height || 0)
+    };
+
+    // 다양한 뷰포트 근사치들
+    const vv = window.visualViewport;
+    const fromViewport = {
+      w: Math.round(Math.max(window.innerWidth, document.documentElement.clientWidth, vv?.width || 0)),
+      h: Math.round(Math.max(window.innerHeight, document.documentElement.clientHeight, vv?.height || 0))
+    };
+
+    // parent 모드라면 parent와 viewport 중 더 큰 쪽을 채택
+    if (this.#e.size === 'parent') {
+      return {
+        w: Math.max(fromParent.w, fromViewport.w),
+        h: Math.max(fromParent.h, fromViewport.h)
+      };
     }
 
-    // 🧠 주소창/툴바에 의한 미세 높이 변화 무시
+    // 직접 모드라면 viewport 사용
+    return fromViewport;
+  }
+
+  resize(force = false) {
+    // 터치 중엔 스킵
+    if (!force && INTERACTING) return;
+
+    let { w: e, h: t } = this.#e.size instanceof Object
+      ? { w: this.#e.size.width, h: this.#e.size.height }
+      : this.#measure();
+
+    // 최초 기준 업데이트(더 큰 값만 반영)
+    this.#baseline.w = Math.max(this.#baseline.w, e);
+    this.#baseline.h = Math.max(this.#baseline.h, t);
+
+    // 작은 튐 무시: 기준에서 작은 변화는 패스
     const prevW = this.#lastApplied.w || this.size.width || e;
     const prevH = this.#lastApplied.h || this.size.height || t;
     const dW = Math.abs(e - prevW);
     const dH = Math.abs(t - prevH);
     const orientationChanged = (e > t) !== (prevW > prevH);
+
     if (
+      !force &&
       this.ignoreMinorResizes &&
       !orientationChanged &&
-      dW <= 2 &&                 // 가로폭은 사실상 고정
-      dH < this.minorResizeThreshold // 세로 변화가 임계 미만이면 스킵
+      dW <= 2 &&
+      dH < this.minorResizeThreshold
     ) {
       return;
     }
+
+    // 너무 작게 줄어든 값은 baseline로 보정
+    if (!orientationChanged) {
+      e = Math.max(e, this.#baseline.w - 2); // -2는 float 오차 여유
+      t = Math.max(t, this.#baseline.h - 2);
+    } else {
+      // 회전 시엔 새 기준 시작
+      this.#baseline = { w: e, h: t };
+    }
+
     this.#lastApplied = { w: e, h: t };
 
     this.size.width = e;
@@ -169,6 +211,7 @@ class x {
     this.#b();
     this.onAfterResize(this.size);
   }
+
   #x() {
     this.camera.aspect = this.size.width / this.size.height;
     if (this.camera.isPerspectiveCamera && this.cameraFov) {
@@ -199,27 +242,25 @@ class x {
   }
   #b() {
     this.renderer.setSize(this.size.width, this.size.height);
-    this.#t?.setSize(this.size.width, this.size.height);
 
-    // 픽셀 비율 고정 옵션
-    let pr = window.devicePixelRatio;
-    if (this.maxPixelRatio && pr > this.maxPixelRatio) pr = this.maxPixelRatio;
-    else if (this.minPixelRatio && pr < this.minPixelRatio) pr = this.minPixelRatio;
-
+    // 픽셀 비율: 과도한 저하 방지 (min 1), 상한도 적절히
+    let pr = window.devicePixelRatio || 1;
     if (this.lockPixelRatio) {
-      if (!this.#initialPixelRatio) this.#initialPixelRatio = pr;
+      if (this.#initialPixelRatio == null) this.#initialPixelRatio = pr;
       pr = this.#initialPixelRatio;
     }
+    if (this.maxPixelRatio && pr > this.maxPixelRatio) pr = this.maxPixelRatio;
+    if (this.minPixelRatio && pr < this.minPixelRatio) pr = this.minPixelRatio;
+    if (!this.minPixelRatio) pr = Math.max(1, pr);
+    if (!this.maxPixelRatio) pr = Math.min(2.5, pr); // 모바일에서 과도한 DPR 방지
+
     this.renderer.setPixelRatio(pr);
     this.size.pixelRatio = pr;
+    this.#t?.setSize?.(this.size.width, this.size.height);
   }
-  get postprocessing() {
-    return this.#t;
-  }
-  set postprocessing(e) {
-    this.#t = e;
-    this.render = e.render.bind(e);
-  }
+  get postprocessing() { return this.#t; }
+  set postprocessing(e) { this.#t = e; this.render = e.render.bind(e); }
+
   #w() {
     if (this.#n) return;
     const animate = () => {
@@ -249,9 +290,7 @@ class x {
       if (e.isMesh && typeof e.material === 'object' && e.material !== null) {
         Object.keys(e.material).forEach(t => {
           const i = e.material[t];
-          if (i !== null && typeof i === 'object' && typeof i.dispose === 'function') {
-            i.dispose();
-          }
+          if (i !== null && typeof i === 'object' && typeof i.dispose === 'function') i.dispose();
         });
         e.material.dispose();
         e.geometry.dispose();
@@ -263,36 +302,31 @@ class x {
     this.#y();
     this.#z();
     this.clear();
-    this.#t?.dispose();
+    this.#t?.dispose?.();
     this.renderer.dispose();
     this.isDisposed = true;
   }
 }
 
-// ====== 포인터/터치 입력 =================================================
-const b = new Map(),
-  A = new r();
+/* ------------------------------------------------
+   입력 라우팅 (pointer/touch)
+------------------------------------------------- */
+const map = new Map();
+const A = new r();
 let R = false;
-let INTERACTING = false; // 🔒 터치 중 표시
+let INTERACTING = false;
 
-// composedPath가 막히는 상황을 위해 경계박스 폴백 포함
 function isEventOn(elem, ev) {
   if (!ev) return true;
   const tgt = ev.target;
   if (!tgt) return false;
-
-  if (typeof ev.composedPath === 'function') {
-    const path = ev.composedPath();
-    if (path.includes(elem)) return true;
-  } else if (elem === tgt || (elem && elem.contains && elem.contains(tgt))) {
-    return true;
-  }
+  if (typeof ev.composedPath === 'function' && ev.composedPath().includes(elem)) return true;
+  if (elem === tgt || elem.contains?.(tgt)) return true;
   const rect = elem.getBoundingClientRect();
   const x = A.x, y = A.y;
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
-
-function S(e) {
+function attach(e) {
   const t = {
     position: new r(),
     nPosition: new r(),
@@ -304,171 +338,122 @@ function S(e) {
     onLeave() {},
     ...e
   };
-  (function (e, t) {
-    if (!b.has(e)) {
-      b.set(e, t);
+  (function (elem, t) {
+    if (!map.has(elem)) {
+      map.set(elem, t);
       if (!R) {
-        document.body.addEventListener('pointermove', M, { passive: true });
-        document.body.addEventListener('pointerleave', L, { passive: true });
-        document.body.addEventListener('click', C, { passive: true });
-
-        document.body.addEventListener('touchstart', TouchStart, { passive: true });
-        document.body.addEventListener('touchmove', TouchMove, { passive: true });
-        document.body.addEventListener('touchend', TouchEnd, { passive: true });
-        document.body.addEventListener('touchcancel', TouchEnd, { passive: true });
-
+        document.body.addEventListener('pointermove', onPointerMove, { passive: true });
+        document.body.addEventListener('pointerleave', onPointerLeave, { passive: true });
+        document.body.addEventListener('click', onClick, { passive: true });
+        document.body.addEventListener('touchstart', onTouchStart, { passive: true });
+        document.body.addEventListener('touchmove', onTouchMove, { passive: true });
+        document.body.addEventListener('touchend', onTouchEnd, { passive: true });
+        document.body.addEventListener('touchcancel', onTouchEnd, { passive: true });
         R = true;
       }
     }
   })(e.domElement, t);
   t.dispose = () => {
-    const t = e.domElement;
-    b.delete(t);
-    if (b.size === 0) {
-      document.body.removeEventListener('pointermove', M);
-      document.body.removeEventListener('pointerleave', L);
-      document.body.removeEventListener('click', C);
-
-      document.body.removeEventListener('touchstart', TouchStart);
-      document.body.removeEventListener('touchmove', TouchMove);
-      document.body.removeEventListener('touchend', TouchEnd);
-      document.body.removeEventListener('touchcancel', TouchEnd);
-
+    const elem = e.domElement;
+    map.delete(elem);
+    if (map.size === 0) {
+      document.body.removeEventListener('pointermove', onPointerMove);
+      document.body.removeEventListener('pointerleave', onPointerLeave);
+      document.body.removeEventListener('click', onClick);
+      document.body.removeEventListener('touchstart', onTouchStart);
+      document.body.removeEventListener('touchmove', onTouchMove);
+      document.body.removeEventListener('touchend', onTouchEnd);
+      document.body.removeEventListener('touchcancel', onTouchEnd);
       R = false;
     }
   };
   return t;
 }
-function M(e) {
-  A.x = e.clientX;
-  A.y = e.clientY;
-  processInteraction(e);
-}
-function processInteraction(ev) {
-  for (const [elem, t] of b) {
-    if (!isEventOn(elem, ev)) {
-      if (t.hover && !t.touching) {
-        t.hover = false;
-        t.onLeave(t);
-      }
-      continue;
-    }
-    const i = elem.getBoundingClientRect();
-    if (D(i)) {
-      P(t, i);
-      if (!t.hover) {
-        t.hover = true;
-        t.onEnter(t);
-      }
-      t.onMove(t);
-    } else if (t.hover && !t.touching) {
-      t.hover = false;
-      t.onLeave(t);
-    }
-  }
-}
-function C(e) {
-  A.x = e.clientX;
-  A.y = e.clientY;
-  for (const [elem, t] of b) {
+function onPointerMove(e) { A.x = e.clientX; A.y = e.clientY; interact(e); }
+function onPointerLeave() { for (const t of map.values()) { if (t.hover) { t.hover = false; t.onLeave(t); } } }
+function onClick(e) {
+  A.x = e.clientX; A.y = e.clientY;
+  for (const [elem, t] of map) {
     if (!isEventOn(elem, e)) continue;
-    const i = elem.getBoundingClientRect();
-    P(t, i);
-    if (D(i)) t.onClick(t);
+    const rect = elem.getBoundingClientRect();
+    updateNormPos(t, rect);
+    if (hit(rect)) t.onClick(t);
   }
 }
-function L() {
-  for (const t of b.values()) {
-    if (t.hover) {
-      t.hover = false;
-      t.onLeave(t);
-    }
-  }
-}
-function TouchStart(e) {
+function onTouchStart(e) {
   if (e.touches.length > 0) {
     INTERACTING = true;
-    A.x = e.touches[0].clientX;
-    A.y = e.touches[0].clientY;
-
-    for (const [elem, t] of b) {
+    A.x = e.touches[0].clientX; A.y = e.touches[0].clientY;
+    for (const [elem, t] of map) {
       if (!isEventOn(elem, e)) continue;
       const rect = elem.getBoundingClientRect();
-      if (D(rect)) {
+      if (hit(rect)) {
         t.touching = true;
-        P(t, rect);
-        if (!t.hover) {
-          t.hover = true;
-          t.onEnter(t);
-        }
+        updateNormPos(t, rect);
+        if (!t.hover) { t.hover = true; t.onEnter(t); }
         t.onMove(t);
       }
     }
   }
 }
-function TouchMove(e) {
+function onTouchMove(e) {
   if (e.touches.length > 0) {
-    A.x = e.touches[0].clientX;
-    A.y = e.touches[0].clientY;
-
-    for (const [elem, t] of b) {
+    A.x = e.touches[0].clientX; A.y = e.touches[0].clientY;
+    for (const [elem, t] of map) {
       if (!isEventOn(elem, e)) continue;
-
       const rect = elem.getBoundingClientRect();
-      P(t, rect);
-
-      if (D(rect)) {
-        if (!t.hover) {
-          t.hover = true;
-          t.touching = true;
-          t.onEnter(t);
-        }
+      updateNormPos(t, rect);
+      if (hit(rect)) {
+        if (!t.hover) { t.hover = true; t.touching = true; t.onEnter(t); }
         t.onMove(t);
       } else if (t.hover && t.touching) {
-        t.hover = false;
-        t.touching = false;
-        t.onLeave(t);
+        t.hover = false; t.touching = false; t.onLeave(t);
       }
     }
   }
 }
-function TouchEnd() {
+function onTouchEnd() {
   INTERACTING = false;
-  for (const [, t] of b) {
+  for (const [, t] of map) {
     if (t.touching) {
       t.touching = false;
-      if (t.hover) {
-        t.hover = false;
-        t.onLeave(t);
-      }
+      if (t.hover) { t.hover = false; t.onLeave(t); }
     }
   }
 }
-function P(e, t) {
-  const { position: i, nPosition: s } = e;
-  i.x = A.x - t.left;
-  i.y = A.y - t.top;
-  s.x = (i.x / t.width) * 2 - 1;
-  s.y = (-i.y / t.height) * 2 + 1;
+function interact(ev) {
+  for (const [elem, t] of map) {
+    if (!isEventOn(elem, ev)) {
+      if (t.hover && !t.touching) { t.hover = false; t.onLeave(t); }
+      continue;
+    }
+    const rect = elem.getBoundingClientRect();
+    if (hit(rect)) {
+      updateNormPos(t, rect);
+      if (!t.hover) { t.hover = true; t.onEnter(t); }
+      t.onMove(t);
+    } else if (t.hover && !t.touching) {
+      t.hover = false; t.onLeave(t);
+    }
+  }
 }
-function D(e) {
-  const { x: t, y: i } = A;
-  const { left: s, top: n, width: o, height: r } = e;
-  return t >= s && t <= s + o && i >= n && i <= n + r;
+function updateNormPos(t, rect) {
+  const { position: i, nPosition: s } = t;
+  i.x = A.x - rect.left;
+  i.y = A.y - rect.top;
+  s.x = (i.x / rect.width) * 2 - 1;
+  s.y = (-i.y / rect.height) * 2 + 1;
+}
+function hit(rect) {
+  const { x, y } = A;
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
-// ====== 물리 + 머티리얼 ==================================================
+/* ------------------------------------------------
+   물리 & 렌더 오브젝트 (Z)
+------------------------------------------------- */
 const { randFloat: k, randFloatSpread: E } = o;
-const F = new a();
-const I = new a();
-const O = new a();
-const V = new a();
-const B = new a();
-const N = new a();
-const _ = new a();
-const j = new a();
-const H = new a();
-const T = new a();
+const F = new a(), I = new a(), O = new a(), V = new a(), B = new a(), N = new a(), _ = new a(), j = new a(), H = new a(), T = new a();
 
 class W {
   constructor(e) {
@@ -493,20 +478,18 @@ class W {
   setSizes() {
     const { config: e, sizeData: t } = this;
     t[0] = e.size0;
-    for (let i = 1; i < e.count; i++) {
-      t[i] = k(e.minSize, e.maxSize);
-    }
+    for (let i = 1; i < e.count; i++) t[i] = k(e.minSize, e.maxSize);
   }
   update(e) {
     const { config: t, center: i, positionData: s, sizeData: n, velocityData: o } = this;
-    let r = 0;
+    let r0 = 0;
     if (t.controlSphere0) {
-      r = 1;
+      r0 = 1;
       F.fromArray(s, 0);
       F.lerp(i, 0.1).toArray(s, 0);
       V.set(0, 0, 0).toArray(o, 0);
     }
-    for (let idx = r; idx < t.count; idx++) {
+    for (let idx = r0; idx < t.count; idx++) {
       const base = 3 * idx;
       I.fromArray(s, base);
       B.fromArray(o, base);
@@ -517,7 +500,7 @@ class W {
       I.toArray(s, base);
       B.toArray(o, base);
     }
-    for (let idx = r; idx < t.count; idx++) {
+    for (let idx = r0; idx < t.count; idx++) {
       const base = 3 * idx;
       I.fromArray(s, base);
       B.fromArray(o, base);
@@ -535,14 +518,8 @@ class W {
           j.copy(_).normalize().multiplyScalar(0.5 * overlap);
           H.copy(j).multiplyScalar(Math.max(B.length(), 1));
           T.copy(j).multiplyScalar(Math.max(N.length(), 1));
-          I.sub(j);
-          B.sub(H);
-          I.toArray(s, base);
-          B.toArray(o, base);
-          O.add(j);
-          N.add(T);
-          O.toArray(s, otherBase);
-          N.toArray(o, otherBase);
+          I.sub(j); B.sub(H); I.toArray(s, base); B.toArray(o, base);
+          O.add(j); N.add(T); O.toArray(s, otherBase); N.toArray(o, otherBase);
         }
       }
       if (t.controlSphere0) {
@@ -553,30 +530,18 @@ class W {
           const diff = sumRadius0 - dist;
           j.copy(_.normalize()).multiplyScalar(diff);
           H.copy(j).multiplyScalar(Math.max(B.length(), 2));
-          I.sub(j);
-          B.sub(H);
+          I.sub(j); B.sub(H);
         }
       }
-      if (Math.abs(I.x) + radius > t.maxX) {
-        I.x = Math.sign(I.x) * (t.maxX - radius);
-        B.x = -B.x * t.wallBounce;
-      }
+      if (Math.abs(I.x) + radius > t.maxX) { I.x = Math.sign(I.x) * (t.maxX - radius); B.x = -B.x * t.wallBounce; }
       if (t.gravity === 0) {
-        if (Math.abs(I.y) + radius > t.maxY) {
-          I.y = Math.sign(I.y) * (t.maxY - radius);
-          B.y = -B.y * t.wallBounce;
-        }
+        if (Math.abs(I.y) + radius > t.maxY) { I.y = Math.sign(I.y) * (t.maxY - radius); B.y = -B.y * t.wallBounce; }
       } else if (I.y - radius < -t.maxY) {
-        I.y = -t.maxY + radius;
-        B.y = -B.y * t.wallBounce;
+        I.y = -t.maxY + radius; B.y = -B.y * t.wallBounce;
       }
       const maxBoundary = Math.max(t.maxZ, t.maxSize);
-      if (Math.abs(I.z) + radius > maxBoundary) {
-        I.z = Math.sign(I.z) * (t.maxZ - radius);
-        B.z = -B.z * t.wallBounce;
-      }
-      I.toArray(s, base);
-      B.toArray(o, base);
+      if (Math.abs(I.z) + radius > maxBoundary) { I.z = Math.sign(I.z) * (t.maxZ - radius); B.z = -B.z * t.wallBounce; }
+      I.toArray(s, base); B.toArray(o, base);
     }
   }
 }
@@ -585,28 +550,43 @@ class Y extends c {
   constructor(e) {
     super(e);
     this.uniforms = {
+      thicknessPower: { value: 2 },
+      thicknessScale: { value: 10 },
       thicknessDistortion: { value: 0.1 },
       thicknessAmbient: { value: 0 },
-      thicknessAttenuation: { value: 0.1 },
-      thicknessPower: { value: 2 },
-      thicknessScale: { value: 10 }
+      thicknessAttenuation: { value: 0.1 }
     };
     this.defines.USE_UV = '';
-    this.onBeforeCompile = e => {
+    this.onBeforeCompile = (e) => {
       Object.assign(e.uniforms, this.uniforms);
       e.fragmentShader =
-        '\n        uniform float thicknessPower;\n        uniform float thicknessScale;\n        uniform float thicknessDistortion;\n        uniform float thicknessAmbient;\n        uniform float thicknessAttenuation;\n      ' +
+        '\nuniform float thicknessPower;uniform float thicknessScale;uniform float thicknessDistortion;uniform float thicknessAmbient;uniform float thicknessAttenuation;\n' +
         e.fragmentShader;
       e.fragmentShader = e.fragmentShader.replace(
         'void main() {',
-        '\n        void RE_Direct_Scattering(const in IncidentLight directLight, const in vec2 uv, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, inout ReflectedLight reflectedLight) {\n          vec3 scatteringHalf = normalize(directLight.direction + (geometryNormal * thicknessDistortion));\n          float scatteringDot = pow(saturate(dot(geometryViewDir, -scatteringHalf)), thicknessPower) * thicknessScale;\n          #ifdef USE_COLOR\n            vec3 scatteringIllu = (scatteringDot + thicknessAmbient) * vColor;\n          #else\n            vec3 scatteringIllu = (scatteringDot + thicknessAmbient) * diffuse;\n          #endif\n          reflectedLight.directDiffuse += scatteringIllu * thicknessAttenuation * directLight.color;\n        }\n\n        void main() {\n      '
+        `
+        void RE_Direct_Scattering(const in IncidentLight directLight, const in vec2 uv, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, inout ReflectedLight reflectedLight) {
+          vec3 scatteringHalf = normalize(directLight.direction + (geometryNormal * thicknessDistortion));
+          float scatteringDot = pow(saturate(dot(geometryViewDir, -scatteringHalf)), thicknessPower) * thicknessScale;
+          #ifdef USE_COLOR
+            vec3 scatteringIllu = (scatteringDot + thicknessAmbient) * vColor;
+          #else
+            vec3 scatteringIllu = (scatteringDot + thicknessAmbient) * diffuse;
+          #endif
+          reflectedLight.directDiffuse += scatteringIllu * thicknessAttenuation * directLight.color;
+        }
+        void main() {
+        `
       );
       const t = h.lights_fragment_begin.replaceAll(
         'RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );',
-        '\n          RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );\n          RE_Direct_Scattering(directLight, vUv, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, reflectedLight);\n        '
+        `
+          RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
+          RE_Direct_Scattering(directLight, vUv, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, reflectedLight);
+        `
       );
       e.fragmentShader = e.fragmentShader.replace('#include <lights_fragment_begin>', t);
-      if (this.onBeforeCompile2) this.onBeforeCompile2(e);
+      this.onBeforeCompile2?.(e);
     };
   }
 }
@@ -640,61 +620,52 @@ const X = {
 const U = new m();
 
 class Z extends d {
-  constructor(e, t = {}) {
+  constructor(renderer, t = {}) {
     const i = { ...X, ...t };
-    const envScene = new z();
-    const pmrem = new p(e);
-    const n = pmrem.fromScene(envScene, 0.04).texture;
+    const env = new z();
+    const pmrem = new p(renderer);
+    const envTex = pmrem.fromScene(env, 0.04).texture;
 
-    const o = new g();
-    const r = new Y({ envMap: n, ...i.materialParams });
-    r.envMapRotation.x = -Math.PI / 2;
+    const geom = new g();
+    const mat = new Y({ envMap: envTex, ...i.materialParams });
+    mat.envMapRotation.x = -Math.PI / 2;
 
-    super(o, r, i.count);
+    super(geom, mat, i.count);
     this.config = i;
     this.physics = new W(i);
-    this.#S();
+    this.#lights();
     this.setColors(i.colors);
   }
-  #S() {
+  #lights() {
     this.ambientLight = new f(this.config.ambientColor, this.config.ambientIntensity);
     this.add(this.ambientLight);
     this.light = new u(this.config.colors[0], this.config.lightIntensity);
     this.add(this.light);
   }
-  setColors(e) {
-    if (Array.isArray(e) && e.length > 1) {
-      const t = (function (e) {
-        let t, i;
-        function setColors(e) {
-          t = e;
-          i = [];
-          t.forEach(col => {
-            i.push(new l(col));
-          });
-        }
-        setColors(e);
+  setColors(cols) {
+    if (Array.isArray(cols) && cols.length > 1) {
+      const grad = (() => {
+        let raw, arr;
+        function setColors(e) { raw = e; arr = e.map(c => new l(c)); }
+        setColors(cols);
         return {
-          setColors,
-          getColorAt: function (ratio, out = new l()) {
-            const scaled = Math.max(0, Math.min(1, ratio)) * (t.length - 1);
+          getColorAt(ratio, out = new l()) {
+            const scaled = Math.max(0, Math.min(1, ratio)) * (raw.length - 1);
             const idx = Math.floor(scaled);
-            const start = i[idx];
-            if (idx >= t.length - 1) return start.clone();
+            const start = arr[idx];
+            if (idx >= raw.length - 1) return start.clone();
             const alpha = scaled - idx;
-            const end = i[idx + 1];
+            const end = arr[idx + 1];
             out.r = start.r + alpha * (end.r - start.r);
             out.g = start.g + alpha * (end.g - start.g);
             out.b = start.b + alpha * (end.b - start.b);
             return out;
           }
         };
-      })(e);
+      })();
       for (let idx = 0; idx < this.count; idx++) {
-        this.setColorAt(idx, t.getColorAt(idx / this.count));
-        if (idx === 0) {
-          this.light.color.copy(t.getColorAt(idx / this.count));
-        }
+        this.setColorAt(idx, grad.getColorAt(idx / this.count));
+        if (idx === 0) this.light.color.copy(grad.getColorAt(idx / this.count));
       }
       this.instanceColor.needsUpdate = true;
     }
@@ -703,11 +674,7 @@ class Z extends d {
     this.physics.update(e);
     for (let idx = 0; idx < this.count; idx++) {
       U.position.fromArray(this.physics.positionData, 3 * idx);
-      if (idx === 0 && this.config.followCursor === false) {
-        U.scale.setScalar(0);
-      } else {
-        U.scale.setScalar(this.physics.sizeData[idx]);
-      }
+      U.scale.setScalar(idx === 0 && this.config.followCursor === false ? 0 : this.physics.sizeData[idx]);
       U.updateMatrix();
       this.setMatrixAt(idx, U.matrix);
       if (idx === 0) this.light.position.copy(U.position);
@@ -716,82 +683,81 @@ class Z extends d {
   }
 }
 
-function createBallpit(e, t = {}) {
+/* ------------------------------------------------
+   외부 API (createBallpit + React 컴포넌트)
+------------------------------------------------- */
+function createBallpit(canvas, opts = {}) {
   const i = new x({
-    canvas: e,
+    canvas,
     size: 'parent',
     rendererOptions: { antialias: true, alpha: true },
-    // 필요시 옵션으로 조절 가능
-    ignoreMinorResizes: t.ignoreMinorResizes ?? true,
-    minorResizeThreshold: t.minorResizeThreshold ?? 120,
-    lockPixelRatio: t.lockPixelRatio ?? false
+    ignoreMinorResizes: opts.ignoreMinorResizes ?? true,
+    minorResizeThreshold: opts.minorResizeThreshold ?? 120,
+    lockPixelRatio: opts.lockPixelRatio ?? false,
+    minPixelRatio: 1,
+    maxPixelRatio: 2.5
   });
-  let s;
+
+  let inst;
   i.renderer.toneMapping = v;
   i.camera.position.set(0, 0, 20);
   i.camera.lookAt(0, 0, 0);
   i.cameraMaxAspect = 1.5;
-  i.resize();
-  initialize(t);
 
-  const n = new y();
-  const o = new w(new a(0, 0, 1), 0);
-  const r = new a();
-  let c = false;
+  init(opts);
 
-  // ✅ 세로 스크롤 허용 + 텍스트 선택 방지
-  e.style.touchAction = 'pan-y';
-  e.style.userSelect = 'none';
-  e.style.webkitUserSelect = 'none';
+  const ray = new y();
+  const plane = new w(new a(0, 0, 1), 0);
+  const hit = new a();
+  let paused = false;
 
-  const h = S({
-    domElement: e,
+  // 스크롤 허용 + 텍스트 선택 방지
+  canvas.style.touchAction = 'pan-y';
+  canvas.style.userSelect = 'none';
+  canvas.style.webkitUserSelect = 'none';
+
+  const input = attach({
+    domElement: canvas,
     onMove() {
-      n.setFromCamera(h.nPosition, i.camera);
-      i.camera.getWorldDirection(o.normal);
-      n.ray.intersectPlane(o, r);
-      s.physics.center.copy(r);
-      s.config.controlSphere0 = true;
+      ray.setFromCamera(input.nPosition, i.camera);
+      i.camera.getWorldDirection(plane.normal);
+      ray.ray.intersectPlane(plane, hit);
+      inst.physics.center.copy(hit);
+      inst.config.controlSphere0 = true;
     },
-    onLeave() {
-      s.config.controlSphere0 = false;
-    }
+    onLeave() { inst.config.controlSphere0 = false; }
   });
 
-  function initialize(e) {
-    if (s) {
-      i.clear();
-      i.scene.remove(s);
-    }
-    s = new Z(i.renderer, e);
-    i.scene.add(s);
+  function init(cfg) {
+    if (inst) { i.clear(); i.scene.remove(inst); }
+    inst = new Z(i.renderer, cfg);
+    i.scene.add(inst);
   }
 
-  i.onBeforeRender = e => {
-    if (!c) s.update(e);
-  };
+  i.onBeforeRender = e => { if (!paused) inst.update(e); };
   i.onAfterResize = e => {
-    s.config.maxX = e.wWidth / 2;
-    s.config.maxY = e.wHeight / 2;
+    inst.config.maxX = e.wWidth / 2;
+    inst.config.maxY = e.wHeight / 2;
   };
+
   return {
     three: i,
-    get spheres() { return s; },
-    setCount(e) { initialize({ ...s.config, count: e }); },
-    togglePause() { c = !c; },
-    dispose() { h.dispose(); i.dispose(); }
+    get spheres() { return inst; },
+    setCount(c) { init({ ...inst.config, count: c }); },
+    togglePause() { paused = !paused; },
+    dispose() { input.dispose(); i.dispose(); }
   };
 }
 
 const Ballpit = ({ className = '', followCursor = true, ...props }) => {
   const canvasRef = useRef(null);
-  const spheresInstanceRef = useRef(null);
+  const ref = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    spheresInstanceRef.current = createBallpit(canvas, { followCursor, ...props });
-    return () => { spheresInstanceRef.current?.dispose(); };
+    ref.current = createBallpit(canvas, { followCursor, ...props });
+    return () => ref.current?.dispose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

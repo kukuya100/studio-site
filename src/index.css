@@ -1,13 +1,12 @@
 @import "tailwindcss";
 
 /* 스크롤 허용 + 기본 스타일 */
-html, body {
-  min-height: 100%;
-  height: auto;
-  overflow-x: hidden;
-}
+html, body { min-height: 100%; height: auto; overflow-x: hidden; }
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* 뷰포트 높이 안정화: 지원되는 브라우저에서 가장 넓은 값 사용 */
+.vh-safe {
+  height: 100svh;
+  height: 100dvh; /* 동적 */
+  height: 100lvh; /* large: 주소창 숨겨진 최대 높이 */
 }
