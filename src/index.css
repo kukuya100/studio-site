@@ -1,12 +1,25 @@
 @import "tailwindcss";
 
 /* 스크롤 허용 + 기본 스타일 */
-html, body { min-height: 100%; height: auto; overflow-x: hidden; }
-body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html, body {
+  min-height: 100%;
+  height: auto;
+  overflow-x: hidden;
+}
 
-/* 뷰포트 높이 안정화: 지원되는 브라우저에서 가장 넓은 값 사용 */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 뷰포트 높이 '안 흔들리는' 단위 (Ballpit 래퍼용) */
 .vh-safe {
-  height: 100svh;
-  height: 100dvh; /* 동적 */
-  height: 100lvh; /* large: 주소창 숨겨진 최대 높이 */
+  height: 100svh; /* 작은 뷰포트 (주소창 포함) */
+  height: 100dvh; /* 동적 뷰포트 */
+  height: 100lvh; /* 큰 뷰포트 (주소창 숨김) */
+}
+
+/* 스크롤 중에도 절대 고정되는 높이 (스크림/오버레이용) */
+.vh-lock {
+  height: var(--vh-lock, 100lvh); /* JS가 --vh-lock 픽셀값을 주입 */
 }

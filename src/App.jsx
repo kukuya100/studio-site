@@ -25,6 +25,23 @@ const resolveAsset = (p) => {
   return `${base}/${p.replace(/^\//, "")}`;
 };
 
+// ========= 뷰포트 높이 락(스크롤 중 재계산 방지) =========
+function useLockViewportHeight() {
+  useEffect(() => {
+    const set = () => {
+      const h = window.innerHeight; // 초기 표시 높이 픽셀
+      document.documentElement.style.setProperty("--vh-lock", `${h}px`);
+    };
+    set(); // 최초 1회
+
+    // 주소창 애니에 따른 resize는 무시, 회전 때만 갱신
+    const onOrient = () => setTimeout(set, 350);
+    window.addEventListener("orientationchange", onOrient);
+
+    return () => window.removeEventListener("orientationchange", onOrient);
+  }, []);
+}
+
 // ========= 샘플 데이터 (projects.json 없을 때만 사용) =========
 const SAMPLE_PROJECTS = [
   {
@@ -212,6 +229,8 @@ function ProjectGallery({ item }) {
 
 // ========= 메인 =========
 export default function App() {
+  useLockViewportHeight(); // ← 스크롤 중 스크림/배경 높이 고정
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [projects, setProjects] = useState(SAMPLE_PROJECTS);
   const [active, setActive] = useState(null);
@@ -251,7 +270,7 @@ export default function App() {
 
   return (
     <div className="relative min-h-screen bg-[#0b0e13] [color-scheme:dark]">
-      {/* ▼ 배경 (vh-safe로 '가장 큰' 뷰포트 높이 채택) */}
+      {/* ▼ 배경 (Ballpit) : 너는 이미 엔진에서 소소한 리사이즈 무시 설정을 해둠 */}
       <div className="fixed inset-0 z-0 vh-safe">
         <BallPit
           className="pointer-events-auto"
@@ -262,9 +281,7 @@ export default function App() {
           followCursor
           // 필요시 lockPixelRatio 켜서 DPR 고정 가능
           // lockPixelRatio
-          // 🔴 비비드 팔레트
           colors={[0xff3864, 0xffbd2e, 0x7cff6b, 0x3ae7ff, 0x7a5cff, 0xff6ad5]}
-          // (선택) 하이라이트가 너무 밝으면 아래 2개 수치 더 낮추세요.
           materialParams={{
             metalness: 0.40,
             roughness: 0.42,
@@ -276,11 +293,9 @@ export default function App() {
         />
       </div>
 
-      {/* ▼ 글로벌 스크림(가독성 보호막) : BallPit 위에 얇게 */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        {/* 상하 그라데이션으로 전체 대비 확보 */}
+      {/* ▼ 스크림/비네트 — 높이 고정(vh-lock)으로 스크롤 중 재계산 방지 */}
+      <div className="fixed inset-x-0 top-0 z-0 pointer-events-none vh-lock">
         <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/35" />
-        {/* 좌측 상단 히어로 영역을 더 눌러주는 소프트 비네트 */}
         <div className="absolute left-0 top-0 h-[55vh] w-[70vw] md:w-[50vw] -translate-x-[5%] -translate-y-[5%] rounded-[50%] blur-2xl bg-black/30" />
       </div>
 
