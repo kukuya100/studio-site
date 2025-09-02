@@ -259,7 +259,7 @@ export default function App() {
   return (
     <div className="relative min-h-screen bg-[#0b0e13] [color-scheme:dark]">
       {/* ▼ 배경 레이어 */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
+      <div className="fixed inset-0 z-0">
         <BallPit
           count={200}
           gravity={0.02}
