@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useState, useEffect as useEffectAlias } from
 import BallPit from "./Backgrounds/Ballpit/Ballpit";
 import ProfileCard from "./Components/ProfileCard/ProfileCard";
 
+import person from "./assets/person.png";
+import iconpattern from "./assets/iconpattern.png";
+import grain from "./assets/grain.webp";
+
 // ========= iOS 자이로/모션 권한 요청 (사용자 제스처 안에서 호출 필요) =========
 let _motionAsked = false;
 async function requestMotionPermission() {
@@ -445,10 +449,16 @@ export default function App() {
                 handle="therenderstudio"
                 status="Online"
                 contactText="Contact"
-                avatarUrl="/assets/person.png"
-                miniAvatarUrl="/assets/person.png"
-                iconUrl="/assets/iconpattern.png"
-                grainUrl="/assets/grain.webp"
+                //avatarUrl="/assets/person.png"
+                //miniAvatarUrl="/assets/person.png"
+                //iconUrl="/assets/iconpattern.png"
+                //grainUrl="/assets/grain.webp"
+                miniAvatarUrl={person}
+                avatarUrl={person}
+                iconUrl={iconpattern}
+                grainUrl={grain}
+
+                
 
                 // 배경 그라데이션(샘플)
                 showBehindGradient={true}
