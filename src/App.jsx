@@ -171,22 +171,37 @@ function Modal({ open, onClose, children }) {
         aria-hidden
       />
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div
-          className={cx(
-            "max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl",
-            glass
-          )}
-        >
+        <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl backdrop-blur-xl bg-white/5 dark:bg-black/20 border border-white/10 shadow-[0_0_1px_#fff_inset,0_10px_40px_-10px_rgba(0,0,0,0.5)]">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <h3 className="text-base font-semibold text-white">Project</h3>
+
+            {/* ✖️ 가독성 높은 닫기 버튼 */}
             <button
               onClick={onClose}
-              className="rounded-lg p-2 hover:bg-white/10"
+              className="group inline-flex h-10 w-10 items-center justify-center rounded-lg
+                         text-white/85 hover:text-white hover:bg-white/15
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70
+                         active:scale-95 transition"
               aria-label="Close"
+              title="Close"
             >
-              ✕
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                className="block"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6 6l12 12M18 6L6 18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
             </button>
           </div>
+
           <div className="max-h-[78vh] overflow-y-auto p-4">{children}</div>
         </div>
       </div>
@@ -473,6 +488,62 @@ export default function App() {
           </div>
         </div>
       </Section>
+
+      {/* PROJECTS */}
+<Section id="projects">
+  <div className="mb-8 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+    <div>
+      <h2
+        className="text-3xl font-bold text-white md:text-4xl"
+        style={{ textShadow: "0 2px 12px rgba(0,0,0,.75)" }}
+      >
+        Selected Projects
+      </h2>
+      <p
+        className="mt-2 max-w-2xl text-white/80"
+        style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}
+      >
+        최근 작업을 월별로 업데이트합니다. 검색/태그로 빠르게 찾아보세요.
+      </p>
+    </div>
+
+    {/* 검색 + 태그 */}
+    <div className="flex w-full flex-col items-stretch gap-3 md:w-auto md:flex-row md:items-center">
+      <input
+        type="search"
+        placeholder="Search…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full rounded-2xl border border-white/15 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 md:w-64"
+      />
+      <div className="flex flex-wrap gap-2">
+        {tags.map((t) => (
+          <button
+            key={t}
+            onClick={() => setTag(t)}
+            className={
+              t === tag
+                ? "rounded-full px-3 py-1 text-xs bg-white text-black"
+                : "rounded-full px-3 py-1 text-xs bg-white/10 text-white/80 border border-white/15 hover:bg-white/15"
+            }
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    {filtered.length ? (
+      filtered.map((p) => <ProjectCard key={p.id} item={p} onOpen={setActive} />)
+    ) : (
+      <div className="col-span-full rounded-2xl border border-white/10 p-6 text-center text-white/70">
+        결과가 없습니다.
+      </div>
+    )}
+  </div>
+</Section>
 
       {/* SERVICES */}
       <Section id="services" className="py-16">
