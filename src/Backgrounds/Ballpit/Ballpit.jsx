@@ -235,16 +235,24 @@ const b = new Map(),
   A = new r();
 let R = false;
 
+// === 이벤트 경로 + 경계 박스 폴백 ===
 function isEventOn(elem, ev) {
   if (!ev) return true;
   const tgt = ev.target;
   if (!tgt) return false;
-  // composedPath가 있으면 가장 정확
+
+  // 1) composedPath로 직접 판정
   if (typeof ev.composedPath === 'function') {
     const path = ev.composedPath();
-    return path.includes(elem);
+    if (path.includes(elem)) return true;
+  } else if (elem === tgt || (elem && elem.contains && elem.contains(tgt))) {
+    return true;
   }
-  return elem === tgt || (elem && elem.contains && elem.contains(tgt));
+
+  // 2) 상위 요소가 pointer-events:none 등으로 막혀있을 때 좌표 기반 폴백
+  const rect = elem.getBoundingClientRect();
+  const x = A.x, y = A.y;
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
 function S(e) {
@@ -263,7 +271,6 @@ function S(e) {
     if (!b.has(e)) {
       b.set(e, t);
       if (!R) {
-        // ✅ 모두 passive로, 기본 동작(스크롤/탭) 보존
         document.body.addEventListener('pointermove', M, { passive: true });
         document.body.addEventListener('pointerleave', L, { passive: true });
         document.body.addEventListener('click', C, { passive: true });
@@ -304,7 +311,6 @@ function M(e) {
 
 function processInteraction(ev) {
   for (const [elem, t] of b) {
-    // 버튼/링크 등 다른 요소를 누르면 무시
     if (!isEventOn(elem, ev)) {
       if (t.hover && !t.touching) {
         t.hover = false;
@@ -387,7 +393,6 @@ function TouchMove(e) {
         }
         t.onMove(t);
       } else if (t.hover && t.touching) {
-        // 요소 경계 밖으로 움직이면 leave 처리
         t.hover = false;
         t.touching = false;
         t.onLeave(t);
@@ -608,10 +613,14 @@ class Z extends d {
   constructor(e, t = {}) {
     const i = { ...X, ...t };
     const s = new z();
-    const n = new p(e, 0.04).fromScene(s).texture;
+    // PMREM: 생성자엔 renderer만, blur는 fromScene의 두 번째 인자
+    const pmrem = new p(e);
+    const n = pmrem.fromScene(s, 0.04).texture;
+
     const o = new g();
     const r = new Y({ envMap: n, ...i.materialParams });
     r.envMapRotation.x = -Math.PI / 2;
+
     super(o, r, i.count);
     this.config = i;
     this.physics = new W(i);
@@ -765,7 +774,6 @@ const Ballpit = ({ className = '', followCursor = true, ...props }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ JSX에서도 안전하게 명시
   return (
     <canvas
       className={className}
