@@ -36,7 +36,7 @@ const ProfileCardComponent = ({
   showBehindGradient = true,
   className = '',
   enableTilt = true,
-  enableMobileTilt = false,
+  enableMobileTilt = true,
   mobileTiltSensitivity = 5,
   miniAvatarUrl,
   name = 'Javi A. Torres',
