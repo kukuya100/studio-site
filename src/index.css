@@ -1,8 +1,7 @@
 @import "tailwindcss";
 
 /* 스크롤 허용 + 기본 스타일 */
-html,
-body {
+html, body {
   min-height: 100%;
   height: auto;
   overflow-x: hidden;

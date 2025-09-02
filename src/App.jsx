@@ -1,20 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-
-// ✅ jsrepo로 설치한 공식 React Bits (경로/대소문자 정확히 맞추세요)
 import ShinyText from "./TextAnimations/ShinyText/ShinyText";
 import BubbleMenu from "./Components/BubbleMenu/BubbleMenu";
 import Magnet from "./Animations/Magnet/Magnet";
-
-// ✅ three.js 기반 Ballpit (네가 추가한 구현)
 import BallPit from "./Backgrounds/Ballpit/Ballpit";
 
-/**
- * App.jsx — TheRenderStudio 시안용 (가독성 향상 버전)
- * - 배경: BallPit (비비드 팔레트)
- * - 글로벌 스크림 + 히어로 국소 비네트 + 텍스트 글로우로 대비 확보
- */
-
-// ========= 유틸 =========
 const cx = (...classes) => classes.filter(Boolean).join(" ");
 const glass =
   "backdrop-blur-xl bg-white/5 dark:bg-black/20 border border-white/10 shadow-[0_0_1px_#fff_inset,0_10px_40px_-10px_rgba(0,0,0,0.5)]";
@@ -24,15 +13,13 @@ const brand = {
   chip: "bg-white/10 text-white/80 border border-white/15 hover:bg-white/15",
 };
 
-// BASE_URL을 사용해 정적 자산 경로 자동 보정 (GitHub Pages 서브경로 대응)
 const resolveAsset = (p) => {
   if (!p) return p;
-  if (/^https?:\/\//i.test(p)) return p; // 외부 URL은 그대로
+  if (/^https?:\/\//i.test(p)) return p;
   const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
   return `${base}/${p.replace(/^\//, "")}`;
 };
 
-// ========= 샘플 데이터 (projects.json 없을 때만 사용) =========
 const SAMPLE_PROJECTS = [
   {
     id: "2025-09-aurora",
@@ -80,9 +67,7 @@ const SAMPLE_PROJECTS = [
   },
 ];
 
-// ========= 공용 컴포넌트 =========
 function Section({ id, className = "", children }) {
-  // 배경 위에 올라오도록 z-10
   return (
     <section id={id} className={cx("relative z-10 py-20 md:py-28", className)}>
       <div className="mx-auto w-full max-w-7xl px-5 md:px-8">{children}</div>
@@ -217,7 +202,6 @@ function ProjectGallery({ item }) {
   );
 }
 
-// ========= 메인 =========
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [projects, setProjects] = useState(SAMPLE_PROJECTS);
@@ -226,7 +210,6 @@ export default function App() {
   const [tag, setTag] = useState("All");
 
   useEffect(() => {
-    // GitHub Pages 서브경로 대응
     fetch(`${import.meta.env.BASE_URL}projects.json`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -258,55 +241,46 @@ export default function App() {
 
   return (
     <div className="relative min-h-screen bg-[#0b0e13] [color-scheme:dark]">
-      {/* ▼ 배경 레이어 */}
-      <div className="fixed inset-0 z-0">
+      {/* ▼ 배경 (고정 높이로 뷰포트 튐 무시) */}
+      <div className="fixed inset-0 z-0 h-[100svh]">
         <BallPit
+          className="pointer-events-auto"
           count={200}
           gravity={0.02}
           friction={0.9975}
           wallBounce={0.95}
           followCursor
-          // 🔴 비비드 팔레트
+          // 튐 억제를 더 원하면 lockPixelRatio={true}도 전달 가능
+          // lockPixelRatio
           colors={[0xff3864, 0xffbd2e, 0x7cff6b, 0x3ae7ff, 0x7a5cff, 0xff6ad5]}
-          // (선택) 하이라이트가 너무 밝으면 아래 2개 수치 더 낮추세요.
           materialParams={{
-            metalness: 0.40,          // 0.45 → 0.40
-            roughness: 0.42,          // 0.35 → 0.42 (너무 번들거림 완화)
-            clearcoat: 0.9,           // 1 → 0.9
-            clearcoatRoughness: 0.18, // 0.12 → 0.18
+            metalness: 0.40,
+            roughness: 0.42,
+            clearcoat: 0.9,
+            clearcoatRoughness: 0.18,
           }}
-          ambientIntensity={0.3} // 0.4 → 0.3
-          lightIntensity={80}    // 100 → 80
+          ambientIntensity={0.3}
+          lightIntensity={80}
         />
       </div>
 
-      {/* ▼ 글로벌 스크림(가독성 보호막) : BallPit 위에 얇게 */}
+      {/* ▼ 스크림/비네트(클릭 스루 유지) */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        {/* 상하 그라데이션으로 전체 대비 확보 */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/35" />
-        {/* 좌측 상단 히어로 영역을 더 눌러주는 소프트 비네트 */}
         <div className="absolute left-0 top-0 h-[55vh] w-[70vw] md:w-[50vw] -translate-x-[5%] -translate-y-[5%] rounded-[50%] blur-2xl bg-black/30" />
       </div>
 
-      {/* NAV (콘텐츠는 z-10 이상으로) */}
+      {/* NAV */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-black/30 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-3 md:px-8">
           <a href="#" className="text-lg font-semibold tracking-tight text-white">
             TheRenderStudio
           </a>
           <nav className="hidden gap-6 md:flex">
-            <a href="#projects" className="text-sm text-white/80 hover:text-white">
-              Projects
-            </a>
-            <a href="#services" className="text-sm text-white/80 hover:text-white">
-              Services
-            </a>
-            <a href="#about" className="text-sm text-white/80 hover:text-white">
-              About
-            </a>
-            <a href="#contact" className="text-sm text-white/80 hover:text-white">
-              Contact
-            </a>
+            <a href="#projects" className="text-sm text-white/80 hover:text-white">Projects</a>
+            <a href="#services" className="text-sm text-white/80 hover:text-white">Services</a>
+            <a href="#about" className="text-sm text-white/80 hover:text-white">About</a>
+            <a href="#contact" className="text-sm text-white/80 hover:text-white">Contact</a>
           </nav>
           <div className="md:hidden">
             <button
@@ -343,9 +317,7 @@ export default function App() {
       {/* HERO */}
       <Section id="hero" className="pt-16">
         <div className="relative overflow-hidden rounded-3xl border border-white/10 p-8 md:p-14">
-          {/* ▼ 국소 비네트: 타이틀 주변만 살짝 더 어둡게 */}
           <div className="pointer-events-none absolute -inset-6 md:-inset-10 rounded-[2rem] bg-[radial-gradient(60%_50%_at_22%_28%,rgba(0,0,0,0.55),transparent_60%)]" />
-
           <div className="relative z-10 flex flex-col items-start gap-6 md:flex-row md:items-end md:justify-between">
             <div>
               <h1
@@ -357,7 +329,6 @@ export default function App() {
                   <ShinyText className="text-white">Exhibitions</ShinyText>
                 </span>
               </h1>
-
               <p
                 className="mt-4 max-w-2xl text-base text-white/90 md:text-lg"
                 style={{ textShadow: "0 1px 10px rgba(0,0,0,.75)" }}
@@ -365,8 +336,6 @@ export default function App() {
                 TheRenderStudio는 미디어아트·VFX·인터랙티브를 제작하는 소규모 팀입니다.
                 빠른 프로토타이핑과 깔끔한 마감으로 브랜드/전시 경험을 만듭니다.
               </p>
-
-              {/* Magnet — 내부에 a 버튼 감싸는 패턴 */}
               <div className="mt-6 flex gap-3">
                 <Magnet>
                   <a
@@ -424,6 +393,8 @@ export default function App() {
             <input
               type="search"
               placeholder="Search…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
               className="w-full rounded-2xl border border-white/15 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 md:w-64"
             />
             <div className="flex flex-wrap gap-2">
@@ -545,7 +516,7 @@ export default function App() {
 
       {/* FOOTER */}
       <footer className="border-t border-white/10 py-10">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-5 text-sm text-white/60 md:flex-row md:px-8">
+        <div className="mx-auto flex w/full max-w-7xl flex-col items-center justify-between gap-4 px-5 text-sm text-white/60 md:flex-row md:px-8">
           <p>© {new Date().getFullYear()} TheRenderStudio — Media Art & Interactive</p>
           <div className="flex items-center gap-4">
             <a href="#projects" className="hover:text-white">Projects</a>
@@ -556,7 +527,6 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Quick Menu (공식 BubbleMenu) */}
       <BubbleMenu
         items={[
           { href: "#projects", label: "Projects", icon: "🎬" },
@@ -566,7 +536,6 @@ export default function App() {
         ]}
       />
 
-      {/* PROJECT MODAL */}
       <Modal open={!!active} onClose={() => setActive(null)}>
         {active && <ProjectGallery item={active} />}
       </Modal>

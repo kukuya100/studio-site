@@ -49,8 +49,21 @@ class x {
   #c = new e();
   #h = { elapsed: 0, delta: 0 };
   #l;
+
+  // ---- 추가: 리사이즈 무시/고정 옵션 ----
+  ignoreMinorResizes = true;
+  minorResizeThreshold = 120; // px
+  lockPixelRatio = false;
+  #lastApplied = { w: 0, h: 0 };
+  #initialPixelRatio = null;
+
   constructor(e) {
     this.#e = { ...e };
+    // 옵션 주입
+    if (typeof this.#e.ignoreMinorResizes === 'boolean') this.ignoreMinorResizes = this.#e.ignoreMinorResizes;
+    if (typeof this.#e.minorResizeThreshold === 'number') this.minorResizeThreshold = this.#e.minorResizeThreshold;
+    if (typeof this.#e.lockPixelRatio === 'boolean') this.lockPixelRatio = this.#e.lockPixelRatio;
+
     this.#m();
     this.#d();
     this.#p();
@@ -114,9 +127,13 @@ class x {
   }
   #f() {
     if (this.#a) clearTimeout(this.#a);
-    this.#a = setTimeout(this.resize.bind(this), 100);
+    // 주소창 애니메이션 동안 더 묶어주기
+    this.#a = setTimeout(this.resize.bind(this), 250);
   }
   resize() {
+    // 🔒 상호작용 중엔 리사이즈 스킵
+    if (INTERACTING) return;
+
     let e, t;
     if (this.#e.size instanceof Object) {
       e = this.#e.size.width;
@@ -128,6 +145,23 @@ class x {
       e = window.innerWidth;
       t = window.innerHeight;
     }
+
+    // 🧠 주소창/툴바에 의한 미세 높이 변화 무시
+    const prevW = this.#lastApplied.w || this.size.width || e;
+    const prevH = this.#lastApplied.h || this.size.height || t;
+    const dW = Math.abs(e - prevW);
+    const dH = Math.abs(t - prevH);
+    const orientationChanged = (e > t) !== (prevW > prevH);
+    if (
+      this.ignoreMinorResizes &&
+      !orientationChanged &&
+      dW <= 2 &&                 // 가로폭은 사실상 고정
+      dH < this.minorResizeThreshold // 세로 변화가 임계 미만이면 스킵
+    ) {
+      return;
+    }
+    this.#lastApplied = { w: e, h: t };
+
     this.size.width = e;
     this.size.height = t;
     this.size.ratio = e / t;
@@ -166,14 +200,18 @@ class x {
   #b() {
     this.renderer.setSize(this.size.width, this.size.height);
     this.#t?.setSize(this.size.width, this.size.height);
-    let e = window.devicePixelRatio;
-    if (this.maxPixelRatio && e > this.maxPixelRatio) {
-      e = this.maxPixelRatio;
-    } else if (this.minPixelRatio && e < this.minPixelRatio) {
-      e = this.minPixelRatio;
+
+    // 픽셀 비율 고정 옵션
+    let pr = window.devicePixelRatio;
+    if (this.maxPixelRatio && pr > this.maxPixelRatio) pr = this.maxPixelRatio;
+    else if (this.minPixelRatio && pr < this.minPixelRatio) pr = this.minPixelRatio;
+
+    if (this.lockPixelRatio) {
+      if (!this.#initialPixelRatio) this.#initialPixelRatio = pr;
+      pr = this.#initialPixelRatio;
     }
-    this.renderer.setPixelRatio(e);
-    this.size.pixelRatio = e;
+    this.renderer.setPixelRatio(pr);
+    this.size.pixelRatio = pr;
   }
   get postprocessing() {
     return this.#t;
@@ -231,25 +269,24 @@ class x {
   }
 }
 
+// ====== 포인터/터치 입력 =================================================
 const b = new Map(),
   A = new r();
 let R = false;
+let INTERACTING = false; // 🔒 터치 중 표시
 
-// === 이벤트 경로 + 경계 박스 폴백 ===
+// composedPath가 막히는 상황을 위해 경계박스 폴백 포함
 function isEventOn(elem, ev) {
   if (!ev) return true;
   const tgt = ev.target;
   if (!tgt) return false;
 
-  // 1) composedPath로 직접 판정
   if (typeof ev.composedPath === 'function') {
     const path = ev.composedPath();
     if (path.includes(elem)) return true;
   } else if (elem === tgt || (elem && elem.contains && elem.contains(tgt))) {
     return true;
   }
-
-  // 2) 상위 요소가 pointer-events:none 등으로 막혀있을 때 좌표 기반 폴백
   const rect = elem.getBoundingClientRect();
   const x = A.x, y = A.y;
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
@@ -302,13 +339,11 @@ function S(e) {
   };
   return t;
 }
-
 function M(e) {
   A.x = e.clientX;
   A.y = e.clientY;
   processInteraction(e);
 }
-
 function processInteraction(ev) {
   for (const [elem, t] of b) {
     if (!isEventOn(elem, ev)) {
@@ -332,7 +367,6 @@ function processInteraction(ev) {
     }
   }
 }
-
 function C(e) {
   A.x = e.clientX;
   A.y = e.clientY;
@@ -343,7 +377,6 @@ function C(e) {
     if (D(i)) t.onClick(t);
   }
 }
-
 function L() {
   for (const t of b.values()) {
     if (t.hover) {
@@ -352,9 +385,9 @@ function L() {
     }
   }
 }
-
 function TouchStart(e) {
   if (e.touches.length > 0) {
+    INTERACTING = true;
     A.x = e.touches[0].clientX;
     A.y = e.touches[0].clientY;
 
@@ -373,7 +406,6 @@ function TouchStart(e) {
     }
   }
 }
-
 function TouchMove(e) {
   if (e.touches.length > 0) {
     A.x = e.touches[0].clientX;
@@ -400,8 +432,8 @@ function TouchMove(e) {
     }
   }
 }
-
 function TouchEnd() {
+  INTERACTING = false;
   for (const [, t] of b) {
     if (t.touching) {
       t.touching = false;
@@ -412,7 +444,6 @@ function TouchEnd() {
     }
   }
 }
-
 function P(e, t) {
   const { position: i, nPosition: s } = e;
   i.x = A.x - t.left;
@@ -426,6 +457,7 @@ function D(e) {
   return t >= s && t <= s + o && i >= n && i <= n + r;
 }
 
+// ====== 물리 + 머티리얼 ==================================================
 const { randFloat: k, randFloatSpread: E } = o;
 const F = new a();
 const I = new a();
@@ -500,9 +532,7 @@ class W {
         const sumRadius = radius + otherRadius;
         if (dist < sumRadius) {
           const overlap = sumRadius - dist;
-          j.copy(_)
-            .normalize()
-            .multiplyScalar(0.5 * overlap);
+          j.copy(_).normalize().multiplyScalar(0.5 * overlap);
           H.copy(j).multiplyScalar(Math.max(B.length(), 1));
           T.copy(j).multiplyScalar(Math.max(N.length(), 1));
           I.sub(j);
@@ -584,7 +614,7 @@ class Y extends c {
 const X = {
   count: 200,
   colors: [0, 0, 0],
-  ambientColor: 16777215,
+  ambientColor: 0xffffff,
   ambientIntensity: 1,
   lightIntensity: 200,
   materialParams: {
@@ -612,10 +642,9 @@ const U = new m();
 class Z extends d {
   constructor(e, t = {}) {
     const i = { ...X, ...t };
-    const s = new z();
-    // PMREM: 생성자엔 renderer만, blur는 fromScene의 두 번째 인자
+    const envScene = new z();
     const pmrem = new p(e);
-    const n = pmrem.fromScene(s, 0.04).texture;
+    const n = pmrem.fromScene(envScene, 0.04).texture;
 
     const o = new g();
     const r = new Y({ envMap: n, ...i.materialParams });
@@ -691,7 +720,11 @@ function createBallpit(e, t = {}) {
   const i = new x({
     canvas: e,
     size: 'parent',
-    rendererOptions: { antialias: true, alpha: true }
+    rendererOptions: { antialias: true, alpha: true },
+    // 필요시 옵션으로 조절 가능
+    ignoreMinorResizes: t.ignoreMinorResizes ?? true,
+    minorResizeThreshold: t.minorResizeThreshold ?? 120,
+    lockPixelRatio: t.lockPixelRatio ?? false
   });
   let s;
   i.renderer.toneMapping = v;
@@ -700,6 +733,7 @@ function createBallpit(e, t = {}) {
   i.cameraMaxAspect = 1.5;
   i.resize();
   initialize(t);
+
   const n = new y();
   const o = new w(new a(0, 0, 1), 0);
   const r = new a();
@@ -723,6 +757,7 @@ function createBallpit(e, t = {}) {
       s.config.controlSphere0 = false;
     }
   });
+
   function initialize(e) {
     if (s) {
       i.clear();
@@ -731,6 +766,7 @@ function createBallpit(e, t = {}) {
     s = new Z(i.renderer, e);
     i.scene.add(s);
   }
+
   i.onBeforeRender = e => {
     if (!c) s.update(e);
   };
@@ -740,19 +776,10 @@ function createBallpit(e, t = {}) {
   };
   return {
     three: i,
-    get spheres() {
-      return s;
-    },
-    setCount(e) {
-      initialize({ ...s.config, count: e });
-    },
-    togglePause() {
-      c = !c;
-    },
-    dispose() {
-      h.dispose();
-      i.dispose();
-    }
+    get spheres() { return s; },
+    setCount(e) { initialize({ ...s.config, count: e }); },
+    togglePause() { c = !c; },
+    dispose() { h.dispose(); i.dispose(); }
   };
 }
 
@@ -763,14 +790,8 @@ const Ballpit = ({ className = '', followCursor = true, ...props }) => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     spheresInstanceRef.current = createBallpit(canvas, { followCursor, ...props });
-
-    return () => {
-      if (spheresInstanceRef.current) {
-        spheresInstanceRef.current.dispose();
-      }
-    };
+    return () => { spheresInstanceRef.current?.dispose(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
