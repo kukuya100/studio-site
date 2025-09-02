@@ -26,7 +26,7 @@ import { RoomEnvironment as z } from 'three/examples/jsm/environments/RoomEnviro
 /* ------------------------------------------------
    렌더 엔진 (x)
    - 초기 뷰포트 기준으로 사이즈/해상도 결정
-   - 주소창 애니메이션 등 사소한 리사이즈 무시
+   - 주소창 애니 등 사소한 리사이즈 무시
 ------------------------------------------------- */
 class x {
   #e;
@@ -137,7 +137,6 @@ class x {
 
   // 부모/뷰포트에서 "가장 넓은" 값으로 측정
   #measure() {
-    // parent 우선
     const parent = this.canvas.parentNode;
     const rect = parent?.getBoundingClientRect?.();
     const fromParent = {
@@ -145,22 +144,18 @@ class x {
       h: Math.round(rect?.height || 0)
     };
 
-    // 다양한 뷰포트 근사치들
     const vv = window.visualViewport;
     const fromViewport = {
       w: Math.round(Math.max(window.innerWidth, document.documentElement.clientWidth, vv?.width || 0)),
       h: Math.round(Math.max(window.innerHeight, document.documentElement.clientHeight, vv?.height || 0))
     };
 
-    // parent 모드라면 parent와 viewport 중 더 큰 쪽을 채택
     if (this.#e.size === 'parent') {
       return {
         w: Math.max(fromParent.w, fromViewport.w),
         h: Math.max(fromParent.h, fromViewport.h)
       };
     }
-
-    // 직접 모드라면 viewport 사용
     return fromViewport;
   }
 
@@ -176,7 +171,6 @@ class x {
     this.#baseline.w = Math.max(this.#baseline.w, e);
     this.#baseline.h = Math.max(this.#baseline.h, t);
 
-    // 작은 튐 무시: 기준에서 작은 변화는 패스
     const prevW = this.#lastApplied.w || this.size.width || e;
     const prevH = this.#lastApplied.h || this.size.height || t;
     const dW = Math.abs(e - prevW);
@@ -193,12 +187,10 @@ class x {
       return;
     }
 
-    // 너무 작게 줄어든 값은 baseline로 보정
     if (!orientationChanged) {
-      e = Math.max(e, this.#baseline.w - 2); // -2는 float 오차 여유
+      e = Math.max(e, this.#baseline.w - 2);
       t = Math.max(t, this.#baseline.h - 2);
     } else {
-      // 회전 시엔 새 기준 시작
       this.#baseline = { w: e, h: t };
     }
 
@@ -243,7 +235,6 @@ class x {
   #b() {
     this.renderer.setSize(this.size.width, this.size.height);
 
-    // 픽셀 비율: 과도한 저하 방지 (min 1), 상한도 적절히
     let pr = window.devicePixelRatio || 1;
     if (this.lockPixelRatio) {
       if (this.#initialPixelRatio == null) this.#initialPixelRatio = pr;
@@ -252,7 +243,7 @@ class x {
     if (this.maxPixelRatio && pr > this.maxPixelRatio) pr = this.maxPixelRatio;
     if (this.minPixelRatio && pr < this.minPixelRatio) pr = this.minPixelRatio;
     if (!this.minPixelRatio) pr = Math.max(1, pr);
-    if (!this.maxPixelRatio) pr = Math.min(2.5, pr); // 모바일에서 과도한 DPR 방지
+    if (!this.maxPixelRatio) pr = Math.min(2.5, pr);
 
     this.renderer.setPixelRatio(pr);
     this.size.pixelRatio = pr;

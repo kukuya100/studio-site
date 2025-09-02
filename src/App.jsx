@@ -1,12 +1,4 @@
-// src/App.jsx
-import React, { useEffect, useMemo, useState } from "react";
-
-// 공식 React Bits
-import ShinyText from "./TextAnimations/ShinyText/ShinyText";
-import BubbleMenu from "./Components/BubbleMenu/BubbleMenu";
-import Magnet from "./Animations/Magnet/Magnet";
-
-// three.js 기반 Ballpit
+import React, { useEffect, useMemo, useState, useEffect as useEffectAlias } from "react";
 import BallPit from "./Backgrounds/Ballpit/Ballpit";
 
 // ========= 유틸 =========
@@ -17,32 +9,51 @@ const brand = {
   chip: "bg-white/10 text-white/80 border border-white/15 hover:bg-white/15",
 };
 
-// BASE_URL을 사용해 정적 자산 경로 자동 보정 (GitHub Pages 서브경로 대응)
+// BASE_URL을 사용해 정적 자산 경로 자동 보정
 const resolveAsset = (p) => {
   if (!p) return p;
-  if (/^https?:\/\//i.test(p)) return p; // 외부 URL은 그대로
+  if (/^https?:\/\//i.test(p)) return p;
   const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
   return `${base}/${p.replace(/^\//, "")}`;
 };
 
-// ========= 뷰포트 높이 락(스크롤 중 재계산 방지) =========
-function useLockViewportHeight() {
+// ========= “커질 때만 확장” 뷰포트 천장 훅 =========
+function useViewportCeil() {
   useEffect(() => {
-    const set = () => {
-      const h = window.innerHeight; // 초기 표시 높이 픽셀
-      document.documentElement.style.setProperty("--vh-lock", `${h}px`);
-    };
-    set(); // 최초 1회
+    let maxH = 0;
+    const measure = () =>
+      Math.round(window.visualViewport?.height || window.innerHeight);
+    const apply = (h) =>
+      document.documentElement.style.setProperty("--vh-ceil", `${h}px`);
 
-    // 주소창 애니에 따른 resize는 무시, 회전 때만 갱신
-    const onOrient = () => setTimeout(set, 350);
+    const updateUpOnly = () => {
+      const h = measure();
+      if (h > maxH) {
+        maxH = h;
+        apply(maxH);
+      }
+    };
+
+    updateUpOnly();
+    setTimeout(updateUpOnly, 300);
+
+    const onResize = () => updateUpOnly();
+    window.addEventListener("resize", onResize, { passive: true });
+
+    const onOrient = () => {
+      maxH = 0;
+      setTimeout(updateUpOnly, 400);
+    };
     window.addEventListener("orientationchange", onOrient);
 
-    return () => window.removeEventListener("orientationchange", onOrient);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onOrient);
+    };
   }, []);
 }
 
-// ========= 샘플 데이터 (projects.json 없을 때만 사용) =========
+// ========= 샘플 데이터 =========
 const SAMPLE_PROJECTS = [
   {
     id: "2025-09-aurora",
@@ -92,7 +103,6 @@ const SAMPLE_PROJECTS = [
 
 // ========= 공용 컴포넌트 =========
 function Section({ id, className = "", children }) {
-  // 배경 위에 올라오도록 z-10
   return (
     <section id={id} className={cx("relative z-10 py-20 md:py-28", className)}>
       <div className="mx-auto w-full max-w-7xl px-5 md:px-8">{children}</div>
@@ -229,7 +239,7 @@ function ProjectGallery({ item }) {
 
 // ========= 메인 =========
 export default function App() {
-  useLockViewportHeight(); // ← 스크롤 중 스크림/배경 높이 고정
+  useViewportCeil(); // 스크림이 "커질 때만 확장"되도록
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [projects, setProjects] = useState(SAMPLE_PROJECTS);
@@ -238,7 +248,6 @@ export default function App() {
   const [tag, setTag] = useState("All");
 
   useEffect(() => {
-    // GitHub Pages 서브경로 대응
     fetch(`${import.meta.env.BASE_URL}projects.json`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -270,7 +279,7 @@ export default function App() {
 
   return (
     <div className="relative min-h-screen bg-[#0b0e13] [color-scheme:dark]">
-      {/* ▼ 배경 (Ballpit) : 너는 이미 엔진에서 소소한 리사이즈 무시 설정을 해둠 */}
+      {/* ▼ 배경 (Ballpit) */}
       <div className="fixed inset-0 z-0 vh-safe">
         <BallPit
           className="pointer-events-auto"
@@ -279,7 +288,6 @@ export default function App() {
           friction={0.9975}
           wallBounce={0.95}
           followCursor
-          // 필요시 lockPixelRatio 켜서 DPR 고정 가능
           // lockPixelRatio
           colors={[0xff3864, 0xffbd2e, 0x7cff6b, 0x3ae7ff, 0x7a5cff, 0xff6ad5]}
           materialParams={{
@@ -293,13 +301,13 @@ export default function App() {
         />
       </div>
 
-      {/* ▼ 스크림/비네트 — 높이 고정(vh-lock)으로 스크롤 중 재계산 방지 */}
-      <div className="fixed inset-x-0 top-0 z-0 pointer-events-none vh-lock">
+      {/* ▼ 스크림/비네트 — 빈칸 방지용 커버 */}
+      <div className="fixed inset-x-0 top-0 z-0 pointer-events-none vh-cover scrim-safe">
         <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/35" />
         <div className="absolute left-0 top-0 h-[55vh] w-[70vw] md:w-[50vw] -translate-x-[5%] -translate-y-[5%] rounded-[50%] blur-2xl bg-black/30" />
       </div>
 
-      {/* NAV (콘텐츠는 z-10 이상으로) */}
+      {/* NAV */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-black/30 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-3 md:px-8">
           <a href="#" className="text-lg font-semibold tracking-tight text-white">
@@ -354,7 +362,7 @@ export default function App() {
       {/* HERO */}
       <Section id="hero" className="pt-16">
         <div className="relative overflow-hidden rounded-3xl border border-white/10 p-8 md:p-14">
-          {/* ▼ 국소 비네트: 타이틀 주변만 살짝 더 어둡게 */}
+          {/* 국소 비네트 */}
           <div className="pointer-events-none absolute -inset-6 md:-inset-10 rounded-[2rem] bg-[radial-gradient(60%_50%_at_22%_28%,rgba(0,0,0,0.55),transparent_60%)]" />
 
           <div className="relative z-10 flex flex-col items-start gap-6 md:flex-row md:items-end md:justify-between">
@@ -363,10 +371,7 @@ export default function App() {
                 className="max-w-2xl text-4xl font-bold leading-tight text-white md:text-6xl"
                 style={{ textShadow: "0 2px 14px rgba(0,0,0,.85), 0 6px 32px rgba(0,0,0,.55)" }}
               >
-                Creative Media for{" "}
-                <span style={{ textShadow: "0 2px 14px rgba(0,0,0,.9), 0 6px 36px rgba(0,0,0,.6)" }}>
-                  <ShinyText className="text-white">Exhibitions</ShinyText>
-                </span>
+                Creative Media for <span className="text-white">Exhibitions</span>
               </h1>
 
               <p
@@ -377,26 +382,21 @@ export default function App() {
                 빠른 프로토타이핑과 깔끔한 마감으로 브랜드/전시 경험을 만듭니다.
               </p>
 
-              {/* Magnet — 내부에 a 버튼 감싸는 패턴 */}
               <div className="mt-6 flex gap-3">
-                <Magnet>
-                  <a
-                    href="#projects"
-                    className="inline-block rounded-2xl px-5 py-2.5 text-sm font-medium text-white border border-white/15 bg-white/10 hover:bg-white/15"
-                    style={{ textShadow: "0 1px 8px rgba(0,0,0,.6)" }}
-                  >
-                    View Projects
-                  </a>
-                </Magnet>
-                <Magnet>
-                  <a
-                    href="#contact"
-                    className="inline-block rounded-2xl px-5 py-2.5 text-sm font-medium text-white border border-white/15 bg-white/20 hover:bg-white/25"
-                    style={{ textShadow: "0 1px 8px rgba(0,0,0,.6)" }}
-                  >
-                    Get in touch
-                  </a>
-                </Magnet>
+                <a
+                  href="#projects"
+                  className="inline-block rounded-2xl px-5 py-2.5 text-sm font-medium text-white border border-white/15 bg-white/10 hover:bg-white/15"
+                  style={{ textShadow: "0 1px 8px rgba(0,0,0,.6)" }}
+                >
+                  View Projects
+                </a>
+                <a
+                  href="#contact"
+                  className="inline-block rounded-2xl px-5 py-2.5 text-sm font-medium text-white border border-white/15 bg-white/20 hover:bg-white/25"
+                  style={{ textShadow: "0 1px 8px rgba(0,0,0,.6)" }}
+                >
+                  Get in touch
+                </a>
               </div>
             </div>
 
@@ -440,18 +440,20 @@ export default function App() {
               className="w-full rounded-2xl border border-white/15 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 md:w-64"
             />
             <div className="flex flex-wrap gap-2">
-              {tags.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTag(t)}
-                  className={cx(
-                    "rounded-full px-3 py-1 text-xs",
-                    t === tag ? "bg-white text-black" : brand.chip
-                  )}
-                >
-                  {t}
-                </button>
-              ))}
+              {[...new Set(["All", ...projects.flatMap((p) => p.tags || [])])].map(
+                (t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTag(t)}
+                    className={cx(
+                      "rounded-full px-3 py-1 text-xs",
+                      t === tag ? "bg-white text-black" : brand.chip
+                    )}
+                  >
+                    {t}
+                  </button>
+                )
+              )}
             </div>
           </div>
         </div>
@@ -567,15 +569,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Quick Menu (공식 BubbleMenu) */}
-      <BubbleMenu
-        items={[
-          { href: "#projects", label: "Projects", icon: "🎬" },
-          { href: "#services", label: "Services", icon: "🛠" },
-          { href: "#about", label: "About", icon: "ℹ️" },
-          { href: "#contact", label: "Contact", icon: "✉️" },
-        ]}
-      />
+      {/* (BubbleMenu 제거됨) */}
 
       {/* PROJECT MODAL */}
       <Modal open={!!active} onClose={() => setActive(null)}>
