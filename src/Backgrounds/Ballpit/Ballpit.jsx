@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect } from "react";
 import {
   Clock as e,
   PerspectiveCamera as t,
@@ -19,9 +19,9 @@ import {
   PointLight as u,
   ACESFilmicToneMapping as v,
   Raycaster as y,
-  Plane as w
-} from 'three';
-import { RoomEnvironment as z } from 'three/examples/jsm/environments/RoomEnvironment.js';
+  Plane as w,
+} from "three";
+import { RoomEnvironment as z } from "three/examples/jsm/environments/RoomEnvironment.js";
 
 // 터치 기기 감지
 const IS_TOUCH_DEVICE =
@@ -351,49 +351,70 @@ class Z extends d {
   }
 }
 
+// === createBallpit 함수 ===
+
 function createBallpit(e, t = {}) {
-  const i = new x({ canvas: e, size: 'parent', rendererOptions: { antialias: true, alpha: true } });
+  const i = new x({
+    canvas: e,
+    size: "parent",
+    rendererOptions: { antialias: true, alpha: true },
+  });
   let s;
   i.renderer.toneMapping = v;
-  i.camera.position.set(0, 0, 20); i.camera.lookAt(0, 0, 0);
-  i.cameraMaxAspect = 1.5; i.resize();
+  i.camera.position.set(0, 0, 20);
+  i.camera.lookAt(0, 0, 0);
+  i.cameraMaxAspect = 1.5;
+  i.resize();
   initialize(t);
 
-  const n = new y(); const o = new w(new a(0, 0, 1), 0); const r = new a();
   let c = false;
 
-  // 고정 배경: 레이아웃 영향 X
-  e.style.position = 'fixed';
-  e.style.inset = '0';
-  e.style.zIndex = '-1';
-  e.style.width = '100%';
-  e.style.height = '100%';
-  e.style.pointerEvents = IS_TOUCH_DEVICE ? 'none' : 'auto';
-  e.style.touchAction = IS_TOUCH_DEVICE ? 'auto' : 'none';
-  e.style.userSelect = 'none';
-  e.style.webkitUserSelect = 'none';
+  // 배경 캔버스 스타일
+  e.style.position = "fixed";
+  e.style.inset = "0";
+  e.style.zIndex = "0"; // z-0
+  e.style.width = "100%";
+  e.style.height = "100%";
+  e.style.pointerEvents = IS_TOUCH_DEVICE ? "none" : "auto";
+  e.style.touchAction = IS_TOUCH_DEVICE ? "auto" : "none";
+  e.style.userSelect = "none";
+  e.style.webkitUserSelect = "none";
 
-  const h = IS_TOUCH_DEVICE
-    ? null
-    : S({
-        domElement: e,
-        onMove() {
-          n.setFromCamera(h.nPosition, i.camera);
-          i.camera.getWorldDirection(o.normal);
-          n.ray.intersectPlane(o, r);
-          s.physics.center.copy(r);
-          s.config.controlSphere0 = true;
-        },
-        onLeave() { s.config.controlSphere0 = false; }
-      });
+  function initialize(e) {
+    if (s) {
+      i.clear();
+      i.scene.remove(s);
+    }
+    s = new Z(i.renderer, e);
+    i.scene.add(s);
+  }
 
-  function initialize(e) { if (s) { i.clear(); i.scene.remove(s); } s = new Z(i.renderer, e); i.scene.add(s); }
-  i.onBeforeRender = e => { if (!c) s.update(e); };
-  i.onAfterResize = e => { s.config.maxX = e.wWidth / 2; s.config.maxY = e.wHeight / 2; };
-  return { three: i, get spheres() { return s; }, setCount(e) { initialize({ ...s.config, count: e }); }, togglePause() { c = !c; }, dispose() { h?.dispose(); i.dispose(); } };
+  i.onBeforeRender = (e) => {
+    if (!c) s.update(e);
+  };
+  i.onAfterResize = (e) => {
+    s.config.maxX = e.wWidth / 2;
+    s.config.maxY = e.wHeight / 2;
+  };
+
+  return {
+    three: i,
+    get spheres() {
+      return s;
+    },
+    setCount(e) {
+      initialize({ ...s.config, count: e });
+    },
+    togglePause() {
+      c = !c;
+    },
+    dispose() {
+      i.dispose();
+    },
+  };
 }
 
-const Ballpit = ({ className = '', followCursor = true, ...props }) => {
+const Ballpit = ({ className = "", followCursor = true, ...props }) => {
   const canvasRef = useRef(null);
   const instRef = useRef(null);
 
@@ -401,15 +422,15 @@ const Ballpit = ({ className = '', followCursor = true, ...props }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     instRef.current = createBallpit(canvas, { followCursor, ...props });
-    return () => { instRef.current?.dispose(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      instRef.current?.dispose();
+    };
   }, []);
 
-  // 고정 배경 + 히트 테스트 제거(모바일)
   return (
     <canvas
       ref={canvasRef}
-      className={`fixed inset-0 -z-10 pointer-events-none ${className || ''}`}
+      className={`fixed inset-0 z-0 pointer-events-none ${className || ""}`}
     />
   );
 };

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
-/* 기본: 스크롤 가능하게 유지 (overflow: hidden 금지!) */
-html, body { min-height: 100%; height: auto; overflow-x: hidden; }
-body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+/* 기본 레이아웃: 스크롤 허용 */
+html, body {
+  min-height: 100%;
+  height: auto;
+  overflow-x: hidden;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
