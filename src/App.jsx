@@ -241,26 +241,29 @@ export default function App() {
 
   return (
     <div className="relative min-h-screen bg-[#0b0e13] [color-scheme:dark]">
-      {/* ▼ 배경 (Ballpit) */}
-      <div className="fixed inset-0 z-0">
-        <BallPit
-          className="pointer-events-auto"
-          count={200}
-          gravity={0.02}
-          friction={0.9975}
-          wallBounce={0.95}
-          followCursor
-          colors={[0xff3864, 0xffbd2e, 0x7cff6b, 0x3ae7ff, 0x7a5cff, 0xff6ad5]}
-          materialParams={{
-            metalness: 0.4,
-            roughness: 0.42,
-            clearcoat: 0.9,
-            clearcoatRoughness: 0.18,
-          }}
-          ambientIntensity={0.3}
-          lightIntensity={80}
-        />
-      </div>
+{/* ▼ 배경 (Ballpit) */}
+<div className="fixed inset-0 z-0">
+  <BallPit
+    className="pointer-events-auto"
+    count={200}
+    gravity={0.02}
+    friction={0.9975}
+    wallBounce={0.95}
+    followCursor
+    colors={[0xff3864, 0xffbd2e, 0x7cff6b, 0x3ae7ff, 0x7a5cff, 0xff6ad5]}
+    materialParams={{
+      metalness: 0.4,
+      roughness: 0.42,
+      clearcoat: 0.9,
+      clearcoatRoughness: 0.18,
+    }}
+    ambientIntensity={0.3}
+    lightIntensity={80}
+  />
+</div>
+
+{/* ▼ BallPit 아래 이어지는 가짜 배경 */}
+<div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,#0b0e13_0%,#05070a_100%)]" />
 
       {/* 스크림/비네트 */}
       <div className="fixed inset-x-0 top-0 z-0 pointer-events-none">
