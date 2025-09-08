@@ -360,11 +360,11 @@ export default function App() {
             <div className={cx("mt-6 w-full rounded-2xl p-5 md:mt-0 md:w-[420px]", glass)}>
               <p className="text-xs uppercase tracking-widest text-white/70">Expertise</p>
               <ul className="mt-2 grid list-disc grid-cols-2 gap-x-6 gap-y-1 pl-4 text-sm text-white/90 md:grid-cols-1">
-                <li>Projection Mapping</li>
-                <li>Realtime Graphics</li>
+                <li>Advertising & Art Film Production</li>
+                <li>High-End Media Art</li>
+                <li>Immersive Brand Experiences</li>
                 <li>Interactive Installations</li>
-                <li>Multi-Screen/LED</li>
-                <li>Sensor Fusion</li>
+                <li>Realtime Visual Performance</li>
               </ul>
             </div>
           </div>
@@ -379,13 +379,13 @@ export default function App() {
               className="text-3xl font-bold text-white md:text-4xl"
               style={{ textShadow: "0 2px 12px rgba(0,0,0,.75)" }}
             >
-              Selected Projects
+              Recent Projects
             </h2>
             <p
               className="mt-2 max-w-2xl text-white/80"
               style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}
             >
-              최근 작업을 캐러셀로 넘겨보세요. (클릭 시 상세 모달)
+              최근 작업 중 일부를 소개합니다. 전체 포트폴리오는 문의 시 공유해 드립니다.
             </p>
           </div>
 
@@ -424,7 +424,7 @@ export default function App() {
               text: p.title,
               payload: p,
             }))}
-            bend={3}
+            bend={0.5}
             textColor="#ffffff"
             borderRadius={0.05}
             font="bold 28px sans-serif"
@@ -435,21 +435,30 @@ export default function App() {
         </div>
       </Section>
 
-      {/* SERVICES */}
-      <Section id="services" className="py-16">
-        <div className="grid gap-6 md:grid-cols-3">
-          {[
-            { t: "Creative Direction", d: "콘셉트 개발, 아트 디렉션, 프로토타이핑" },
-            { t: "Realtime Graphics", d: "Unreal/Unity/TouchDesigner 기반 실시간 파이프라인" },
-            { t: "Exhibition Engineering", d: "프로젝션/LED, 동기화, 센서·서버 연동" },
-          ].map((s) => (
-            <div key={s.t} className={cx("rounded-3xl p-6", glass)}>
-              <h3 className="text-xl font-semibold text-white">{s.t}</h3>
-              <p className="mt-2 text-white/75">{s.d}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
+{/* SERVICES */}
+<Section id="services" className="py-16">
+  <div className="grid gap-6 md:grid-cols-3">
+    {[
+      { 
+        t: "Creative Direction", 
+        d: "아이디어를 경험으로 확장합니다. 콘셉트 기획부터 아트 디렉션, 프로토타이핑까지 — 브랜드와 공간의 서사를 설계합니다." 
+      },
+      { 
+        t: "Brand Experiences", 
+        d: "브랜드 아이덴티티를 감각적으로 시각화합니다. 광고·브랜드 필름 제작부터 인터랙티브 쇼케이스까지, 메시지를 예술적 경험으로 전환합니다." 
+      },
+      { 
+        t: "Media Art & Production", 
+        d: "하이엔드 미디어아트 제작과 엔진 기반 실시간 파이프라인을 결합해, 대규모 프로젝션·LED·센서/서버 연동까지 구현합니다. 공간 전체를 무대로 재탄생시키는 압도적 경험을 완성합니다." 
+      },
+    ].map((s) => (
+      <div key={s.t} className={cx("rounded-3xl p-6", glass)}>
+        <h3 className="text-xl font-semibold text-white">{s.t}</h3>
+        <p className="mt-2 text-white/75">{s.d}</p>
+      </div>
+    ))}
+  </div>
+</Section>
 
       {/* ABOUT + REEL */}
       <Section id="about" className="py-16">
@@ -492,7 +501,7 @@ export default function App() {
             Let’s build something luminous.
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-white/85" style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}>
-            프로젝트 문의를 환영합니다. 간단한 아이디어도 괜찮아요—스케줄/예산에 맞춰 제안서를 드립니다.
+            프로젝트 제안을 환영합니다. 초기 아이디어부터 구체적 기획까지, 요구하시는 일정과 예산에 최적화된 맞춤형 솔루션을 제공합니다.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Button as="a" href="mailto:hello@therenderstudio.com">hello@therenderstudio.com</Button>
