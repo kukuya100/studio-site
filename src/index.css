@@ -40,3 +40,9 @@ body {
   /* 모바일 스크롤 제스처 유지 */
   touch-action: pan-y;
 }
+
+html, body {
+  min-height: 100%;
+  background-color: #0b0e13; /* BallPit 바탕색과 동일 */
+  overscroll-behavior: none; /* 모바일에서 스크롤 튕김 방지 */
+}
