@@ -240,30 +240,30 @@ export default function App() {
   }, [projects, tag, query]);
 
   return (
-    <div className="relative min-h-screen bg-[#0b0e13] [color-scheme:dark]">
-{/* ▼ 배경 (Ballpit) */}
-<div className="fixed inset-0 z-0">
-  <BallPit
-    className="pointer-events-auto"
-    count={200}
-    gravity={0.02}
-    friction={0.9975}
-    wallBounce={0.95}
-    followCursor
-    colors={[0xff3864, 0xffbd2e, 0x7cff6b, 0x3ae7ff, 0x7a5cff, 0xff6ad5]}
-    materialParams={{
-      metalness: 0.4,
-      roughness: 0.42,
-      clearcoat: 0.9,
-      clearcoatRoughness: 0.18,
-    }}
-    ambientIntensity={0.3}
-    lightIntensity={80}
-  />
-</div>
+  <div className="relative min-h-screen bg-[#0b0e13] [color-scheme:dark]">
+    {/* ▼ 배경 (Ballpit) */}
+    <div className="absolute inset-0 -z-10">
+      <BallPit
+        className="w-full h-[200vh]"   // 화면 두 배 높이 → 스크롤 내려도 배경 유지
+        count={200}
+        gravity={0.02}
+        friction={0.9975}
+        wallBounce={0.95}
+        followCursor
+        colors={[0xff3864, 0xffbd2e, 0x7cff6b, 0x3ae7ff, 0x7a5cff, 0xff6ad5]}
+        materialParams={{
+          metalness: 0.4,
+          roughness: 0.42,
+          clearcoat: 0.9,
+          clearcoatRoughness: 0.18,
+        }}
+        ambientIntensity={0.3}
+        lightIntensity={80}
+      />
+    </div>
 
-{/* ▼ BallPit 아래 이어지는 가짜 배경 */}
-<div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,#0b0e13_0%,#05070a_100%)]" />
+    {/* ▼ BallPit이 자연스럽게 어둡게 이어지도록 Fade-out */}
+    <div className="absolute bottom-0 left-0 w-full h-[40vh] bg-gradient-to-b from-transparent to-[#0b0e13] -z-10 pointer-events-none" />
 
       {/* 스크림/비네트 */}
       <div className="fixed inset-x-0 top-0 z-0 pointer-events-none">
