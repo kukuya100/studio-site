@@ -209,7 +209,8 @@ export default function App() {
   const [tag, setTag] = useState("All");
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}projects.json`, { cache: "no-store" })
+    // ✅ 캐시 무력화 적용
+    fetch(`${import.meta.env.BASE_URL}projects.json?ts=${Date.now()}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data && Array.isArray(data)) setProjects(data);
@@ -335,7 +336,7 @@ export default function App() {
                 className="mt-4 max-w-2xl text-base text-white/90 md:text-lg"
                 style={{ textShadow: "0 1px 10px rgba(0,0,0,.75)" }}
               >
-                TheRenderStudio는 미디어아트·VFX·인터랙티브를 제작하는 소규모 팀입니다.
+                TheRenderStudio는 미디어아트·VFX·인터랙티브를 제작하는 팀입니다.
                 빠른 프로토타이핑과 깔끔한 마감으로 브랜드/전시 경험을 만듭니다.
               </p>
               <div className="mt-6 flex gap-3">
@@ -418,11 +419,10 @@ export default function App() {
         {/* 캐러셀 컨테이너는 고정 높이가 필요 */}
         <div className="h-[520px] w-full">
           <CircularGallery
-            // 캐러셀에 표시할 항목
             items={filtered.map((p) => ({
               image: resolveAsset(p.cover),
               text: p.title,
-              payload: p, // ← 클릭 시 되돌려줄 원본 데이터
+              payload: p,
             }))}
             bend={3}
             textColor="#ffffff"
@@ -430,7 +430,7 @@ export default function App() {
             font="bold 28px sans-serif"
             scrollSpeed={2}
             scrollEase={0.05}
-            onItemClick={(payload) => setActive(payload)} // ✅ 클릭 시 모달 오픈
+            onItemClick={(payload) => setActive(payload)}
           />
         </div>
       </Section>
