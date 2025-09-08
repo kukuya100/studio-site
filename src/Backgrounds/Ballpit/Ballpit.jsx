@@ -147,7 +147,7 @@ class x {
     const vv = window.visualViewport;
     const fromViewport = {
       w: Math.round(Math.max(window.innerWidth, document.documentElement.clientWidth, vv?.width || 0)),
-      h: Math.round(Math.max(window.innerHeight, document.documentElement.clientHeight, vv?.height || 0))
+      h: Math.round(Math.max(window.innerHeight, document.documentElement.clientHeight, vv?.height || 0)) + 150
     };
 
     if (this.#e.size === 'parent') {
