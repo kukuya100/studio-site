@@ -3,525 +3,243 @@ import { Camera, Mesh, Plane, Program, Renderer, Texture, Transform } from "ogl"
 import { useEffect, useRef } from "react";
 import "./CircularGallery.css";
 
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
+function debounce(fn, wait) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
 }
-
-function lerp(p1, p2, t) {
-  return p1 + (p2 - p1) * t;
-}
-
-function autoBind(instance) {
-  const proto = Object.getPrototypeOf(instance);
-  Object.getOwnPropertyNames(proto).forEach((key) => {
-    if (key !== "constructor" && typeof instance[key] === "function") {
-      instance[key] = instance[key].bind(instance);
-    }
-  });
-}
+const lerp = (a,b,t)=>a+(b-a)*t;
 
 function createTextTexture(gl, text, font = "bold 30px sans-serif", color = "white") {
   const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  context.font = font;
-  const metrics = context.measureText(text);
-  const textWidth = Math.ceil(metrics.width);
-  const textHeight = Math.ceil(parseInt(font, 10) * 1.2);
-  canvas.width = textWidth + 20;
-  canvas.height = textHeight + 20;
-  context.font = font;
-  context.fillStyle = color;
-  context.textBaseline = "middle";
-  context.textAlign = "center";
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillText(text, canvas.width / 2, canvas.height / 2);
-  const texture = new Texture(gl, { generateMipmaps: false });
+  const ctx = canvas.getContext("2d");
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width);
+  const h = Math.ceil(parseInt(font, 10) * 1.2);
+  canvas.width = w + 20; canvas.height = h + 20;
+  ctx.font = font; ctx.fillStyle = color; ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillText(text, canvas.width/2, canvas.height/2);
+  const texture = new Texture(gl, { generateMipmaps:false });
   texture.image = canvas;
   return { texture, width: canvas.width, height: canvas.height };
 }
 
 class Title {
-  constructor({ gl, plane, text, textColor = "#ffffff", font = "bold 30px sans-serif" }) {
-    autoBind(this);
-    this.gl = gl;
-    this.plane = plane;
-    this.text = text;
-    this.textColor = textColor;
-    this.font = font;
-    this.createMesh();
-  }
-  createMesh() {
-    const { texture, width, height } = createTextTexture(this.gl, this.text, this.font, this.textColor);
-    const geometry = new Plane(this.gl);
-    const program = new Program(this.gl, {
+  constructor({ gl, plane, text, textColor="#fff", font="bold 30px sans-serif" }) {
+    this.gl = gl; this.plane = plane; this.text = text; this.textColor = textColor; this.font = font;
+    const { texture, width, height } = createTextTexture(gl, text, font, textColor);
+    const geometry = new Plane(gl);
+    const program = new Program(gl, {
       vertex: `
-        attribute vec3 position;
-        attribute vec2 uv;
-        uniform mat4 modelViewMatrix;
-        uniform mat4 projectionMatrix;
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
+        attribute vec3 position; attribute vec2 uv;
+        uniform mat4 modelViewMatrix, projectionMatrix; varying vec2 vUv;
+        void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
       fragment: `
-        precision highp float;
-        uniform sampler2D tMap;
-        varying vec2 vUv;
-        void main() {
-          vec4 color = texture2D(tMap, vUv);
-          if (color.a < 0.1) discard;
-          gl_FragColor = color;
-        }
-      `,
+        precision highp float; uniform sampler2D tMap; varying vec2 vUv;
+        void main(){ vec4 c=texture2D(tMap,vUv); if(c.a<0.1) discard; gl_FragColor=c; }`,
       uniforms: { tMap: { value: texture } },
-      transparent: true,
+      transparent: true
     });
-    this.mesh = new Mesh(this.gl, { geometry, program });
-    const aspect = width / height;
-    const textHeight = this.plane.scale.y * 0.15;
-    const textWidth = textHeight * aspect;
-    this.mesh.scale.set(textWidth, textHeight, 1);
-    this.mesh.position.y = -this.plane.scale.y * 0.5 - textHeight * 0.5 - 0.05;
-    this.mesh.setParent(this.plane);
+    this.mesh = new Mesh(gl, { geometry, program });
+    const aspect = width/height, textH = plane.scale.y * 0.15, textW = textH * aspect;
+    this.mesh.scale.set(textW, textH, 1);
+    this.mesh.position.y = -plane.scale.y * 0.5 - textH * 0.5 - 0.05;
+    this.mesh.setParent(plane);
   }
 }
 
 class Media {
-  constructor({
-    geometry,
-    gl,
-    image,
-    index,
-    length,
-    scene,
-    screen,
-    text,
-    viewport,
-    bend,
-    textColor,
-    borderRadius = 0,
-    font,
-    data,
-    originalIndex,
-  }) {
+  constructor({ geometry, gl, image, index, length, scene, screen, text, viewport, bend, textColor, borderRadius=0.05, font, data, originalIndex }) {
     this.extra = 0;
-    this.geometry = geometry;
-    this.gl = gl;
-    this.image = image;
-    this.index = index;
-    this.length = length;
-    this.scene = scene;
-    this.screen = screen;
-    this.text = text;
-    this.viewport = viewport;
-    this.bend = bend;
-    this.textColor = textColor;
-    this.borderRadius = borderRadius;
-    this.font = font;
-    this.data = data; // ← 원본 item (payload 포함)
-    this.originalIndex = originalIndex;
-
-    this.createShader();
-    this.createMesh();
-    this.createTitle();
-    this.onResize({});
+    Object.assign(this, { geometry, gl, image, index, length, scene, screen, text, viewport, bend, textColor, borderRadius, font, data, originalIndex });
+    this._createShader(); this._createMesh(); this._createTitle(); this.onResize({});
   }
-  createShader() {
-    const texture = new Texture(this.gl, { generateMipmaps: true });
+  _createShader() {
+    const texture = new Texture(this.gl, { generateMipmaps:true });
     this.program = new Program(this.gl, {
-      depthTest: false,
-      depthWrite: false,
+      depthTest:false, depthWrite:false,
       vertex: `
-        precision highp float;
-        attribute vec3 position;
-        attribute vec2 uv;
-        uniform mat4 modelViewMatrix;
-        uniform mat4 projectionMatrix;
-        uniform float uTime;
-        uniform float uSpeed;
+        precision highp float; attribute vec3 position; attribute vec2 uv;
+        uniform mat4 modelViewMatrix, projectionMatrix; uniform float uTime, uSpeed;
         varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          vec3 p = position;
-          p.z = (sin(p.x * 4.0 + uTime) * 1.5 + cos(p.y * 2.0 + uTime) * 1.5) * (0.1 + uSpeed * 0.5);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-        }
-      `,
+        void main(){ vUv=uv; vec3 p=position;
+          p.z=(sin(p.x*4.0+uTime)*1.5+cos(p.y*2.0+uTime)*1.5)*(0.1+uSpeed*0.5);
+          gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0); }`,
       fragment: `
-        precision highp float;
-        uniform vec2 uImageSizes;
-        uniform vec2 uPlaneSizes;
-        uniform sampler2D tMap;
-        uniform float uBorderRadius;
-        varying vec2 vUv;
-
-        float roundedBoxSDF(vec2 p, vec2 b, float r) {
-          vec2 d = abs(p) - b;
-          return length(max(d, vec2(0.0))) + min(max(d.x, d.y), 0.0) - r;
-        }
-
-        void main() {
-          vec2 ratio = vec2(
-            min((uPlaneSizes.x / uPlaneSizes.y) / (uImageSizes.x / uImageSizes.y), 1.0),
-            min((uPlaneSizes.y / uPlaneSizes.x) / (uImageSizes.y / uImageSizes.x), 1.0)
+        precision highp float; uniform vec2 uImageSizes,uPlaneSizes; uniform sampler2D tMap; uniform float uBorderRadius; varying vec2 vUv;
+        float roundedBoxSDF(vec2 p, vec2 b, float r){ vec2 d=abs(p)-b; return length(max(d,vec2(0.0)))+min(max(d.x,d.y),0.0)-r; }
+        void main(){
+          vec2 ratio=vec2(
+            min((uPlaneSizes.x/uPlaneSizes.y)/(uImageSizes.x/uImageSizes.y),1.0),
+            min((uPlaneSizes.y/uPlaneSizes.x)/(uImageSizes.y/uImageSizes.x),1.0)
           );
-          vec2 uv = vec2(
-            vUv.x * ratio.x + (1.0 - ratio.x) * 0.5,
-            vUv.y * ratio.y + (1.0 - ratio.y) * 0.5
-          );
-          vec4 color = texture2D(tMap, uv);
-
-          float d = roundedBoxSDF(vUv - 0.5, vec2(0.5 - uBorderRadius), uBorderRadius);
-          float edgeSmooth = 0.002;
-          float alpha = 1.0 - smoothstep(-edgeSmooth, edgeSmooth, d);
-
-          gl_FragColor = vec4(color.rgb, alpha);
-        }
-      `,
+          vec2 uv=vec2(vUv.x*ratio.x+(1.0-ratio.x)*0.5, vUv.y*ratio.y+(1.0-ratio.y)*0.5);
+          vec4 color=texture2D(tMap,uv);
+          float d=roundedBoxSDF(vUv-0.5, vec2(0.5-uBorderRadius), uBorderRadius);
+          float alpha=1.0 - smoothstep(-0.002, 0.002, d);
+          gl_FragColor=vec4(color.rgb, alpha);
+        }`,
       uniforms: {
-        tMap: { value: texture },
-        uPlaneSizes: { value: [0, 0] },
-        uImageSizes: { value: [0, 0] },
-        uSpeed: { value: 0 },
-        uTime: { value: 100 * Math.random() },
-        uBorderRadius: { value: this.borderRadius },
+        tMap:{ value: texture }, uPlaneSizes:{ value:[0,0] }, uImageSizes:{ value:[0,0] },
+        uSpeed:{ value:0 }, uTime:{ value:100*Math.random() }, uBorderRadius:{ value:this.borderRadius }
       },
-      transparent: true,
+      transparent:true
     });
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = this.image;
-    img.onload = () => {
-      texture.image = img;
-      this.program.uniforms.uImageSizes.value = [img.naturalWidth, img.naturalHeight];
-    };
+    const img = new Image(); img.crossOrigin="anonymous"; img.src=this.image;
+    img.onload = ()=>{ texture.image=img; this.program.uniforms.uImageSizes.value=[img.naturalWidth,img.naturalHeight]; };
   }
-  createMesh() {
-    this.plane = new Mesh(this.gl, { geometry: this.geometry, program: this.program });
-    this.plane.setParent(this.scene);
-  }
-  createTitle() {
-    this.title = new Title({
-      gl: this.gl,
-      plane: this.plane,
-      text: this.text,
-      textColor: this.textColor,
-      font: this.font,
-    });
-  }
-  update(scroll, direction) {
+  _createMesh(){ this.plane = new Mesh(this.gl, { geometry:this.geometry, program:this.program }); this.plane.setParent(this.scene); }
+  _createTitle(){ this.title = new Title({ gl:this.gl, plane:this.plane, text:this.text, textColor:this.textColor, font:this.font }); }
+  update(scroll, dir){
     this.plane.position.x = this.x - scroll.current - this.extra;
-
-    const x = this.plane.position.x;
-    const H = this.viewport.width / 2;
-
-    if (this.bend === 0) {
-      this.plane.position.y = 0;
-      this.plane.rotation.z = 0;
-    } else {
-      const B_abs = Math.abs(this.bend);
-      const R = (H * H + B_abs * B_abs) / (2 * B_abs);
-      const effectiveX = Math.min(Math.abs(x), H);
-
-      const arc = R - Math.sqrt(R * R - effectiveX * effectiveX);
-      if (this.bend > 0) {
-        this.plane.position.y = -arc;
-        this.plane.rotation.z = -Math.sign(x) * Math.asin(effectiveX / R);
-      } else {
-        this.plane.position.y = arc;
-        this.plane.rotation.z = Math.sign(x) * Math.asin(effectiveX / R);
-      }
+    const x=this.plane.position.x, H=this.viewport.width/2, B=Math.abs(this.bend);
+    if(B===0){ this.plane.position.y=0; this.plane.rotation.z=0; }
+    else {
+      const R=(H*H+B*B)/(2*B), ex=Math.min(Math.abs(x),H);
+      const arc = R - Math.sqrt(R*R - ex*ex);
+      if(this.bend>0){ this.plane.position.y=-arc; this.plane.rotation.z = -Math.sign(x)*Math.asin(ex/R); }
+      else{ this.plane.position.y=arc; this.plane.rotation.z = Math.sign(x)*Math.asin(ex/R); }
     }
-
     this.speed = scroll.current - scroll.last;
     this.program.uniforms.uTime.value += 0.04;
     this.program.uniforms.uSpeed.value = this.speed;
 
-    const planeOffset = this.plane.scale.x / 2;
-    const viewportOffset = this.viewport.width / 2;
-    this.isBefore = this.plane.position.x + planeOffset < -viewportOffset;
-    this.isAfter = this.plane.position.x - planeOffset > viewportOffset;
-    if (direction === "right" && this.isBefore) {
-      this.extra -= this.widthTotal;
-      this.isBefore = this.isAfter = false;
-    }
-    if (direction === "left" && this.isAfter) {
-      this.extra += this.widthTotal;
-      this.isBefore = this.isAfter = false;
-    }
+    const halfW=this.plane.scale.x/2, vpHalf=this.viewport.width/2;
+    this.isBefore = this.plane.position.x + halfW < -vpHalf;
+    this.isAfter  = this.plane.position.x - halfW >  vpHalf;
+    if(dir==="right" && this.isBefore){ this.extra -= this.widthTotal; this.isBefore=this.isAfter=false; }
+    if(dir==="left"  && this.isAfter ){ this.extra += this.widthTotal; this.isBefore=this.isAfter=false; }
   }
-  onResize({ screen, viewport } = {}) {
-    if (screen) this.screen = screen;
-    if (viewport) this.viewport = viewport;
-
-    this.scale = this.screen.height / 1500;
-    this.plane.scale.y = (this.viewport.height * (900 * this.scale)) / this.screen.height;
-    this.plane.scale.x = (this.viewport.width * (700 * this.scale)) / this.screen.width;
-    this.plane.program.uniforms.uPlaneSizes.value = [this.plane.scale.x, this.plane.scale.y];
-
-    this.padding = 2;
-    this.width = this.plane.scale.x + this.padding;
-    this.widthTotal = this.width * this.length;
-    this.x = this.width * this.index;
+  onResize({ screen, viewport }={}){
+    if(screen) this.screen=screen; if(viewport) this.viewport=viewport;
+    this.scale = this.screen.height/1500;
+    this.plane.scale.y = (this.viewport.height*(900*this.scale))/this.screen.height;
+    this.plane.scale.x = (this.viewport.width *(700*this.scale))/this.screen.width;
+    this.plane.program.uniforms.uPlaneSizes.value=[this.plane.scale.x, this.plane.scale.y];
+    this.padding=2; this.width=this.plane.scale.x+this.padding; this.widthTotal=this.width*this.length; this.x=this.width*this.index;
   }
 }
 
-class App {
-  constructor(
-    container,
-    {
-      items,
-      bend,
-      textColor = "#ffffff",
-      borderRadius = 0.05,
-      font = "bold 30px sans-serif",
-      scrollSpeed = 2,
-      scrollEase = 0.05,
-      onItemClick = null,
-    } = {}
-  ) {
-    document.documentElement.classList.remove("no-js");
-    this.container = container;
-    this.scrollSpeed = scrollSpeed;
-    this.scroll = { ease: scrollEase, current: 0, target: 0, last: 0 };
-    this.onItemClick = onItemClick;
-    this.onCheckDebounce = debounce(this.onCheck, 200);
-    this.createRenderer();
-    this.createCamera();
-    this.createScene();
-    this.onResize();
-    this.createGeometry();
-    this.createMedias(items, bend, textColor, borderRadius, font);
-    this.update();
-    this.addEventListeners();
+class OglCarousel {
+  constructor(container, { items, bend, textColor="#fff", borderRadius=0.05, font="bold 30px sans-serif", scrollSpeed=2, scrollEase=0.05, onItemClick=null } = {}) {
+    this.container=container; this.scrollSpeed=scrollSpeed; this.scroll={ ease:scrollEase, current:0, target:0, last:0 };
+    this.onItemClick=onItemClick; this.onCheckDebounce = debounce(this.onCheck.bind(this), 200);
+    this._createRenderer(); this._createCamera(); this._createScene(); this.onResize(); this._createGeometry(); this._createMedias(items, bend, textColor, borderRadius, font);
+    this._bindInput(); this._loop();
   }
-
-  createRenderer() {
-    this.renderer = new Renderer({
-      alpha: true,
-      antialias: true,
-      dpr: Math.min(window.devicePixelRatio || 1, 2),
-    });
-    this.gl = this.renderer.gl;
-    this.gl.clearColor(0, 0, 0, 0);
-    this.container.appendChild(this.gl.canvas);
+  _createRenderer(){
+    this.renderer=new Renderer({ alpha:true, antialias:true, dpr:Math.min(window.devicePixelRatio||1,2) });
+    this.gl=this.renderer.gl; this.gl.clearColor(0,0,0,0); this.container.appendChild(this.gl.canvas);
   }
-  createCamera() {
-    this.camera = new Camera(this.gl);
-    this.camera.fov = 45;
-    this.camera.position.z = 20;
-  }
-  createScene() {
-    this.scene = new Transform();
-  }
-  createGeometry() {
-    this.planeGeometry = new Plane(this.gl, { heightSegments: 50, widthSegments: 100 });
-  }
-
-  createMedias(items, bend = 1, textColor, borderRadius, font) {
-    const defaults = [
-      { image: `https://picsum.photos/seed/1/800/600?grayscale`, text: "Bridge" },
-      { image: `https://picsum.photos/seed/2/800/600?grayscale`, text: "Desk Setup" },
-      { image: `https://picsum.photos/seed/3/800/600?grayscale`, text: "Waterfall" },
-      { image: `https://picsum.photos/seed/4/800/600?grayscale`, text: "Strawberries" },
-      { image: `https://picsum.photos/seed/5/800/600?grayscale`, text: "Deep Diving" },
-      { image: `https://picsum.photos/seed/16/800/600?grayscale`, text: "Train Track" },
-    ];
+  _createCamera(){ this.camera=new Camera(this.gl); this.camera.fov=45; this.camera.position.z=20; }
+  _createScene(){ this.scene=new Transform(); }
+  _createGeometry(){ this.planeGeometry=new Plane(this.gl,{ heightSegments:50, widthSegments:100 }); }
+  _createMedias(items, bend=1, textColor, borderRadius, font){
+    const defaults=[{image:`https://picsum.photos/seed/1/800/600?grayscale`,text:"Bridge"},{image:`https://picsum.photos/seed/2/800/600?grayscale`,text:"Desk Setup"},{image:`https://picsum.photos/seed/3/800/600?grayscale`,text:"Waterfall"},{image:`httpsum.photos/seed/4/800/600?grayscale`,text:"Strawberries"}];
     this.items = items && items.length ? items : defaults;
     this.originalLength = this.items.length;
-
-    // 무한 스크롤을 위해 2배로 복제
     this.mediasImages = this.items.concat(this.items);
-
-    this.medias = this.mediasImages.map((data, index) => {
-      return new Media({
-        geometry: this.planeGeometry,
-        gl: this.gl,
-        image: data.image,
-        index,
-        length: this.mediasImages.length,
-        scene: this.scene,
-        screen: this.screen,
-        text: data.text,
-        viewport: this.viewport,
-        bend,
-        textColor,
-        borderRadius,
-        font,
-        data,
-        originalIndex: index % this.originalLength,
-      });
-    });
+    this.medias = this.mediasImages.map((data, index)=> new Media({
+      geometry:this.planeGeometry, gl:this.gl, image:data.image, index, length:this.mediasImages.length,
+      scene:this.scene, screen:this.screen, text:data.text, viewport:this.viewport, bend, textColor, borderRadius, font,
+      data, originalIndex:index % this.originalLength
+    }));
   }
-
-  // 입력 처리
-  onTouchDown(e) {
-    this.isDown = true;
-    this.dragged = false;
+  // ---- 입력 처리 (클릭 판정은 mouse/touch up에서만) ----
+  _onDown = (e) => {
+    this.isDown = true; this.dragged=false;
     this.scroll.position = this.scroll.current;
     const p = e.touches ? e.touches[0] : e;
-    this.startX = p.clientX;
-    this.startY = p.clientY;
-    this.startTime = Date.now();
+    this.startX = p.clientX; this.startY = p.clientY; this.startTime = Date.now();
   }
-  onTouchMove(e) {
-    if (!this.isDown) return;
+  _onMove = (e) => {
+    if(!this.isDown) return;
     const p = e.touches ? e.touches[0] : e;
-    const dx = p.clientX - this.startX;
-    const dy = p.clientY - this.startY;
-    if (Math.hypot(dx, dy) > 5) this.dragged = true;
-
+    const dx = p.clientX - this.startX, dy = p.clientY - this.startY;
+    if(Math.hypot(dx,dy) > 6) this.dragged = true; // 이동량 임계값
     const distance = (this.startX - p.clientX) * (this.scrollSpeed * 0.025);
     this.scroll.target = this.scroll.position + distance;
   }
-  onTouchUp() {
-    if (!this.isDown) return;
+  _onUp = () => {
+    if(!this.isDown) return;
     this.isDown = false;
-
-    // 클릭 판단: 이동 적고, 짧은 탭
     const dt = Date.now() - this.startTime;
-    if (!this.dragged && dt < 300) {
-      this.handleClick();
+    if(!this.dragged && dt < 250){ // 탭/클릭
+      this._handleClick();
     } else {
       this.onCheck();
     }
   }
-  onWheel(e) {
+  _onWheel = (e) => {
     const delta = e.deltaY || e.wheelDelta || e.detail;
-    this.scroll.target += (delta > 0 ? this.scrollSpeed : -this.scrollSpeed) * 0.2;
+    this.scroll.target += (delta>0 ? this.scrollSpeed : -this.scrollSpeed) * 0.2;
     this.onCheckDebounce();
   }
-
-  // 중앙 항목 스냅
-  onCheck() {
-    if (!this.medias || !this.medias[0]) return;
+  _handleClick(){
+    if(!this.onItemClick || !this.medias || !this.medias[0]) return;
     const width = this.medias[0].width;
-    const itemIndex = Math.round(Math.abs(this.scroll.target) / width);
-    const item = width * itemIndex;
-    this.scroll.target = this.scroll.target < 0 ? -item : item;
-  }
-
-  // 중앙 아이템 계산 & 클릭 콜백
-  getActiveIndex() {
-    if (!this.medias || !this.medias[0]) return 0;
-    const width = this.medias[0].width;
-    const i = Math.round(Math.abs(this.scroll.target) / width);
-    // 원본 길이 기준으로 반환
-    return i % this.originalLength;
-  }
-  handleClick() {
-    if (!this.onItemClick) return;
-    const idx = this.getActiveIndex();
-    const data = this.items[idx];
+    const i = Math.round(Math.abs(this.scroll.target) / width) % this.originalLength;
+    const data = this.items[i];
     this.onItemClick(data.payload ?? data);
   }
-
-  onResize() {
-    this.screen = {
-      width: this.container.clientWidth,
-      height: this.container.clientHeight,
-    };
+  onCheck(){
+    if(!this.medias || !this.medias[0]) return;
+    const width = this.medias[0].width;
+    const idx = Math.round(Math.abs(this.scroll.target)/width);
+    const snap = width*idx;
+    this.scroll.target = this.scroll.target < 0 ? -snap : snap;
+  }
+  onResize(){
+    this.screen={ width:this.container.clientWidth, height:this.container.clientHeight };
     this.renderer.setSize(this.screen.width, this.screen.height);
-    this.camera.perspective({ aspect: this.screen.width / this.screen.height });
-
-    const fov = (this.camera.fov * Math.PI) / 180;
-    const height = 2 * Math.tan(fov / 2) * this.camera.position.z;
-    const width = height * this.camera.aspect;
-    this.viewport = { width, height };
-
-    if (this.medias) {
-      this.medias.forEach((m) => m.onResize({ screen: this.screen, viewport: this.viewport }));
-    }
+    this.camera.perspective({ aspect:this.screen.width/this.screen.height });
+    const fov=(this.camera.fov*Math.PI)/180, h=2*Math.tan(fov/2)*this.camera.position.z, w=h*this.camera.aspect;
+    this.viewport={ width:w, height:h };
+    if(this.medias) this.medias.forEach(m=>m.onResize({ screen:this.screen, viewport:this.viewport }));
   }
-
-  update() {
+  _loop(){
     this.scroll.current = lerp(this.scroll.current, this.scroll.target, this.scroll.ease);
-    const direction = this.scroll.current > this.scroll.last ? "right" : "left";
-    if (this.medias) this.medias.forEach((m) => m.update(this.scroll, direction));
-    this.renderer.render({ scene: this.scene, camera: this.camera });
+    const dir = this.scroll.current > this.scroll.last ? "right" : "left";
+    if(this.medias) this.medias.forEach(m=>m.update(this.scroll, dir));
+    this.renderer.render({ scene:this.scene, camera:this.camera });
     this.scroll.last = this.scroll.current;
-    this.raf = window.requestAnimationFrame(this.update.bind(this));
+    this.raf = requestAnimationFrame(()=>this._loop());
   }
-
-  addEventListeners() {
-    // 컨테이너 기준 이벤트(버블링 줄이기)
-    this.boundOnResize = this.onResize.bind(this);
-    this.boundOnWheel = this.onWheel.bind(this);
-    this.boundOnDown = this.onTouchDown.bind(this);
-    this.boundOnMove = this.onTouchMove.bind(this);
-    this.boundOnUp = this.onTouchUp.bind(this);
-    this.boundOnClick = () => this.handleClick();
-
-    window.addEventListener("resize", this.boundOnResize, { passive: true });
-    this.container.addEventListener("wheel", this.boundOnWheel, { passive: true });
-
-    // 마우스
-    this.container.addEventListener("mousedown", this.boundOnDown);
-    window.addEventListener("mousemove", this.boundOnMove);
-    window.addEventListener("mouseup", this.boundOnUp);
-
-    // 터치
-    this.container.addEventListener("touchstart", this.boundOnDown, { passive: true });
-    this.container.addEventListener("touchmove", this.boundOnMove, { passive: true });
-    this.container.addEventListener("touchend", this.boundOnUp);
-
-    // 탭/클릭(드래그 아닌 경우만 handleClick에서 처리)
-    this.container.addEventListener("click", this.boundOnClick);
+  _bindInput(){
+    window.addEventListener("resize", this.onResize.bind(this), { passive:true });
+    // 컨테이너 내부에만 바인딩 → 드래그 후 클릭 오인 줄임, click 리스너 없음
+    this.container.addEventListener("wheel", this._onWheel, { passive:true });
+    this.container.addEventListener("mousedown", this._onDown);
+    this.container.addEventListener("mousemove", this._onMove);
+    this.container.addEventListener("mouseup", this._onUp);
+    this.container.addEventListener("mouseleave", this._onUp);
+    this.container.addEventListener("touchstart", this._onDown, { passive:true });
+    this.container.addEventListener("touchmove", this._onMove, { passive:true });
+    this.container.addEventListener("touchend", this._onUp);
+    // CSS로 수직 스크롤 허용
+    this.container.style.touchAction = "pan-y";
   }
-
-  destroy() {
-    window.cancelAnimationFrame(this.raf);
-
-    window.removeEventListener("resize", this.boundOnResize);
-    this.container.removeEventListener("wheel", this.boundOnWheel);
-
-    this.container.removeEventListener("mousedown", this.boundOnDown);
-    window.removeEventListener("mousemove", this.boundOnMove);
-    window.removeEventListener("mouseup", this.boundOnUp);
-
-    this.container.removeEventListener("touchstart", this.boundOnDown);
-    this.container.removeEventListener("touchmove", this.boundOnMove);
-    this.container.removeEventListener("touchend", this.boundOnUp);
-
-    this.container.removeEventListener("click", this.boundOnClick);
-
-    if (this.renderer?.gl?.canvas?.parentNode) {
-      this.renderer.gl.canvas.parentNode.removeChild(this.renderer.gl.canvas);
-    }
+  destroy(){
+    cancelAnimationFrame(this.raf);
+    this.container.removeEventListener("wheel", this._onWheel);
+    this.container.removeEventListener("mousedown", this._onDown);
+    this.container.removeEventListener("mousemove", this._onMove);
+    this.container.removeEventListener("mouseup", this._onUp);
+    this.container.removeEventListener("mouseleave", this._onUp);
+    this.container.removeEventListener("touchstart", this._onDown);
+    this.container.removeEventListener("touchmove", this._onMove);
+    this.container.removeEventListener("touchend", this._onUp);
+    if(this.renderer?.gl?.canvas?.parentNode){ this.renderer.gl.canvas.parentNode.removeChild(this.renderer.gl.canvas); }
   }
 }
 
 export default function CircularGallery({
-  items,
-  bend = 3,
-  textColor = "#ffffff",
-  borderRadius = 0.05,
-  font = "bold 30px sans-serif",
-  scrollSpeed = 2,
-  scrollEase = 0.05,
-  onItemClick, // ✅ 부모 콜백
+  items, bend=3, textColor="#ffffff", borderRadius=0.05, font="bold 30px sans-serif",
+  scrollSpeed=2, scrollEase=0.05, onItemClick
 }) {
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    const app = new App(containerRef.current, {
-      items,
-      bend,
-      textColor,
-      borderRadius,
-      font,
-      scrollSpeed,
-      scrollEase,
-      onItemClick,
-    });
-    return () => app.destroy();
+  const ref = useRef(null);
+  useEffect(()=>{
+    const app = new OglCarousel(ref.current, { items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, onItemClick });
+    return ()=>app.destroy();
   }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, onItemClick]);
-
-  return <div className="circular-gallery" ref={containerRef} />;
+  return <div className="circular-gallery" ref={ref} />;
 }
