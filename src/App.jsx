@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import BallPit from "./Backgrounds/Ballpit/Ballpit";
+import CircularGallery from "./Components/CircularGallery/CircularGallery"; // ✅ 캐러셀
 
 // ========= 유틸 =========
 const cx = (...classes) => classes.filter(Boolean).join(" ");
@@ -160,40 +161,6 @@ function Modal({ open, onClose, children }) {
     </div>
   );
 }
-function ProjectCard({ item, onOpen }) {
-  return (
-    <button
-      onClick={() => onOpen(item)}
-      className={cx(
-        "group relative block overflow-hidden rounded-3xl",
-        "ring-1 ring-white/10 hover:ring-white/30 transition"
-      )}
-    >
-      <div className="relative aspect-[4/3] w-full overflow-hidden">
-        <img
-          src={resolveAsset(item.cover)}
-          alt={item.title}
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-          loading="lazy"
-        />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/0" />
-      </div>
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4">
-        <div className="text-left">
-          <h4 className="text-lg font-semibold text-white drop-shadow">{item.title}</h4>
-          <p className="text-xs text-white/70">
-            {item.client} · {item.year}
-          </p>
-        </div>
-        <div className="flex gap-2 opacity-0 transition group-hover:opacity-100">
-          {item.tags?.slice(0, 2).map((t) => (
-            <Badge key={t}>{t}</Badge>
-          ))}
-        </div>
-      </div>
-    </button>
-  );
-}
 function ProjectGallery({ item }) {
   return (
     <div className="grid gap-5 md:grid-cols-[1.2fr_0.8fr]">
@@ -274,7 +241,7 @@ export default function App() {
   return (
     <div className="relative min-h-screen bg-[#0b0e13] [color-scheme:dark]">
       {/* ▼ 배경 (Ballpit) */}
-      <div className="fixed inset-0 z-0 vh-safe">
+      <div className="fixed inset-0 z-0">
         <BallPit
           className="pointer-events-auto"
           count={200}
@@ -294,8 +261,8 @@ export default function App() {
         />
       </div>
 
-      {/* ▼ 스크림/비네트 — 빈칸 방지용 커버 */}
-      <div className="fixed inset-x-0 top-0 z-0 pointer-events-none vh-cover scrim-safe">
+      {/* 스크림/비네트 */}
+      <div className="fixed inset-x-0 top-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/35" />
         <div className="absolute left-0 top-0 h-[55vh] w-[70vw] md:w-[50vw] -translate-x-[5%] -translate-y-[5%] rounded-[50%] blur-2xl bg-black/30" />
       </div>
@@ -355,11 +322,8 @@ export default function App() {
       {/* HERO */}
       <Section id="hero" className="pt-16">
         <div className="relative overflow-hidden rounded-3xl border border-white/10 p-8 md:p-14">
-          {/* 국소 비네트 */}
           <div className="pointer-events-none absolute -inset-6 md:-inset-10 rounded-[2rem] bg-[radial-gradient(60%_50%_at_22%_28%,rgba(0,0,0,0.55),transparent_60%)]" />
-
           <div className="relative z-10 flex flex-col items-start gap-6 md:flex-row md:items-end md:justify-between">
-            {/* 왼쪽: 타이틀/설명/버튼 */}
             <div>
               <h1
                 className="max-w-2xl text-4xl font-bold leading-tight text-white md:text-6xl"
@@ -367,7 +331,6 @@ export default function App() {
               >
                 Creative Media for <span className="text-white">Exhibitions</span>
               </h1>
-
               <p
                 className="mt-4 max-w-2xl text-base text-white/90 md:text-lg"
                 style={{ textShadow: "0 1px 10px rgba(0,0,0,.75)" }}
@@ -375,7 +338,6 @@ export default function App() {
                 TheRenderStudio는 미디어아트·VFX·인터랙티브를 제작하는 소규모 팀입니다.
                 빠른 프로토타이핑과 깔끔한 마감으로 브랜드/전시 경험을 만듭니다.
               </p>
-
               <div className="mt-6 flex gap-3">
                 <a
                   href="#projects"
@@ -394,7 +356,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* 오른쪽: Expertise 카드 (프로필카드 제거됨) */}
             <div className={cx("mt-6 w-full rounded-2xl p-5 md:mt-0 md:w-[420px]", glass)}>
               <p className="text-xs uppercase tracking-widest text-white/70">Expertise</p>
               <ul className="mt-2 grid list-disc grid-cols-2 gap-x-6 gap-y-1 pl-4 text-sm text-white/90 md:grid-cols-1">
@@ -409,7 +370,7 @@ export default function App() {
         </div>
       </Section>
 
-      {/* PROJECTS */}
+      {/* PROJECTS → CircularGallery */}
       <Section id="projects">
         <div className="mb-8 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
           <div>
@@ -423,11 +384,11 @@ export default function App() {
               className="mt-2 max-w-2xl text-white/80"
               style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}
             >
-              최근 작업을 월별로 업데이트합니다. 검색/태그로 빠르게 찾아보세요.
+              최근 작업을 캐러셀로 넘겨보세요. (클릭 시 상세 모달)
             </p>
           </div>
 
-          {/* 검색 + 태그 */}
+          {/* 검색/태그 */}
           <div className="flex w-full flex-col items-stretch gap-3 md:w-auto md:flex-row md:items-center">
             <input
               type="search"
@@ -454,14 +415,23 @@ export default function App() {
           </div>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.length ? (
-            filtered.map((p) => <ProjectCard key={p.id} item={p} onOpen={setActive} />)
-          ) : (
-            <div className="col-span-full rounded-2xl border border-white/10 p-6 text-center text-white/70">
-              결과가 없습니다.
-            </div>
-          )}
+        {/* 캐러셀 컨테이너는 고정 높이가 필요 */}
+        <div className="h-[520px] w-full">
+          <CircularGallery
+            // 캐러셀에 표시할 항목
+            items={filtered.map((p) => ({
+              image: resolveAsset(p.cover),
+              text: p.title,
+              payload: p, // ← 클릭 시 되돌려줄 원본 데이터
+            }))}
+            bend={3}
+            textColor="#ffffff"
+            borderRadius={0.05}
+            font="bold 28px sans-serif"
+            scrollSpeed={2}
+            scrollEase={0.05}
+            onItemClick={(payload) => setActive(payload)} // ✅ 클릭 시 모달 오픈
+          />
         </div>
       </Section>
 
