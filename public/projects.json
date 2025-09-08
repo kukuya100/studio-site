@@ -21,27 +21,5 @@
     "cover": "images/aurora/cover.jpg",
     "images": ["images/aurora/1.jpg", "images/aurora/2.jpg"],
     "description": "현대적 입면 위를 흐르는 오로라 테마의 인터랙티브 모션 그래픽."
-  },
-  {
-    "id": "2025-09-aurora",
-    "title": "Aurora Shell – Media Facade",
-    "year": 2025,
-    "client": "City Art Center",
-    "tags": ["Projection", "Interactive"],
-    "summary": "9채널 프로젝션과 라이다 기반 인터랙션.",
-    "cover": "images/aurora/cover.jpg",
-    "images": ["images/aurora/1.jpg", "images/aurora/2.jpg"],
-    "description": "현대적 입면 위를 흐르는 오로라 테마의 인터랙티브 모션 그래픽."
-  },
-    {
-    "id": "2025-09-aurora",
-    "title": "Aurora Shell – Media Facade",
-    "year": 2025,
-    "client": "City Art Center",
-    "tags": ["Projection", "Interactive"],
-    "summary": "9채널 프로젝션과 라이다 기반 인터랙션.",
-    "cover": "images/aurora/cover.jpg",
-    "images": ["images/aurora/1.jpg", "images/aurora/2.jpg"],
-    "description": "현대적 입면 위를 흐르는 오로라 테마의 인터랙티브 모션 그래픽."
   }
 ]

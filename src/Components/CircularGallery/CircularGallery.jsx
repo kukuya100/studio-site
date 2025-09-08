@@ -1,6 +1,7 @@
-import { Camera, Mesh, Plane, Program, Renderer, Texture, Transform } from 'ogl';
-import { useEffect, useRef } from 'react';
-import './CircularGallery.css';
+// src/Components/CircularGallery/CircularGallery.jsx
+import { Camera, Mesh, Plane, Program, Renderer, Texture, Transform } from "ogl";
+import { useEffect, useRef } from "react";
+import "./CircularGallery.css";
 
 function debounce(func, wait) {
   let timeout;
@@ -16,16 +17,16 @@ function lerp(p1, p2, t) {
 
 function autoBind(instance) {
   const proto = Object.getPrototypeOf(instance);
-  Object.getOwnPropertyNames(proto).forEach(key => {
-    if (key !== 'constructor' && typeof instance[key] === 'function') {
+  Object.getOwnPropertyNames(proto).forEach((key) => {
+    if (key !== "constructor" && typeof instance[key] === "function") {
       instance[key] = instance[key].bind(instance);
     }
   });
 }
 
-function createTextTexture(gl, text, font = 'bold 30px monospace', color = 'black') {
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
+function createTextTexture(gl, text, font = "bold 30px sans-serif", color = "white") {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
   context.font = font;
   const metrics = context.measureText(text);
   const textWidth = Math.ceil(metrics.width);
@@ -34,8 +35,8 @@ function createTextTexture(gl, text, font = 'bold 30px monospace', color = 'blac
   canvas.height = textHeight + 20;
   context.font = font;
   context.fillStyle = color;
-  context.textBaseline = 'middle';
-  context.textAlign = 'center';
+  context.textBaseline = "middle";
+  context.textAlign = "center";
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillText(text, canvas.width / 2, canvas.height / 2);
   const texture = new Texture(gl, { generateMipmaps: false });
@@ -44,11 +45,10 @@ function createTextTexture(gl, text, font = 'bold 30px monospace', color = 'blac
 }
 
 class Title {
-  constructor({ gl, plane, renderer, text, textColor = '#545050', font = '30px sans-serif' }) {
+  constructor({ gl, plane, text, textColor = "#ffffff", font = "bold 30px sans-serif" }) {
     autoBind(this);
     this.gl = gl;
     this.plane = plane;
-    this.renderer = renderer;
     this.text = text;
     this.textColor = textColor;
     this.font = font;
@@ -80,7 +80,7 @@ class Title {
         }
       `,
       uniforms: { tMap: { value: texture } },
-      transparent: true
+      transparent: true,
     });
     this.mesh = new Mesh(this.gl, { geometry, program });
     const aspect = width / height;
@@ -99,7 +99,6 @@ class Media {
     image,
     index,
     length,
-    renderer,
     scene,
     screen,
     text,
@@ -107,7 +106,9 @@ class Media {
     bend,
     textColor,
     borderRadius = 0,
-    font
+    font,
+    data,
+    originalIndex,
   }) {
     this.extra = 0;
     this.geometry = geometry;
@@ -115,7 +116,6 @@ class Media {
     this.image = image;
     this.index = index;
     this.length = length;
-    this.renderer = renderer;
     this.scene = scene;
     this.screen = screen;
     this.text = text;
@@ -124,15 +124,16 @@ class Media {
     this.textColor = textColor;
     this.borderRadius = borderRadius;
     this.font = font;
+    this.data = data; // ← 원본 item (payload 포함)
+    this.originalIndex = originalIndex;
+
     this.createShader();
     this.createMesh();
     this.createTitle();
-    this.onResize();
+    this.onResize({});
   }
   createShader() {
-    const texture = new Texture(this.gl, {
-      generateMipmaps: true
-    });
+    const texture = new Texture(this.gl, { generateMipmaps: true });
     this.program = new Program(this.gl, {
       depthTest: false,
       depthWrite: false,
@@ -159,12 +160,12 @@ class Media {
         uniform sampler2D tMap;
         uniform float uBorderRadius;
         varying vec2 vUv;
-        
+
         float roundedBoxSDF(vec2 p, vec2 b, float r) {
           vec2 d = abs(p) - b;
           return length(max(d, vec2(0.0))) + min(max(d.x, d.y), 0.0) - r;
         }
-        
+
         void main() {
           vec2 ratio = vec2(
             min((uPlaneSizes.x / uPlaneSizes.y) / (uImageSizes.x / uImageSizes.y), 1.0),
@@ -175,11 +176,11 @@ class Media {
             vUv.y * ratio.y + (1.0 - ratio.y) * 0.5
           );
           vec4 color = texture2D(tMap, uv);
-          
+
           float d = roundedBoxSDF(vUv - 0.5, vec2(0.5 - uBorderRadius), uBorderRadius);
           float edgeSmooth = 0.002;
           float alpha = 1.0 - smoothstep(-edgeSmooth, edgeSmooth, d);
-          
+
           gl_FragColor = vec4(color.rgb, alpha);
         }
       `,
@@ -189,12 +190,12 @@ class Media {
         uImageSizes: { value: [0, 0] },
         uSpeed: { value: 0 },
         uTime: { value: 100 * Math.random() },
-        uBorderRadius: { value: this.borderRadius }
+        uBorderRadius: { value: this.borderRadius },
       },
-      transparent: true
+      transparent: true,
     });
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    img.crossOrigin = "anonymous";
     img.src = this.image;
     img.onload = () => {
       texture.image = img;
@@ -202,20 +203,16 @@ class Media {
     };
   }
   createMesh() {
-    this.plane = new Mesh(this.gl, {
-      geometry: this.geometry,
-      program: this.program
-    });
+    this.plane = new Mesh(this.gl, { geometry: this.geometry, program: this.program });
     this.plane.setParent(this.scene);
   }
   createTitle() {
     this.title = new Title({
       gl: this.gl,
       plane: this.plane,
-      renderer: this.renderer,
       text: this.text,
       textColor: this.textColor,
-      fontFamily: this.font
+      font: this.font,
     });
   }
   update(scroll, direction) {
@@ -250,27 +247,24 @@ class Media {
     const viewportOffset = this.viewport.width / 2;
     this.isBefore = this.plane.position.x + planeOffset < -viewportOffset;
     this.isAfter = this.plane.position.x - planeOffset > viewportOffset;
-    if (direction === 'right' && this.isBefore) {
+    if (direction === "right" && this.isBefore) {
       this.extra -= this.widthTotal;
       this.isBefore = this.isAfter = false;
     }
-    if (direction === 'left' && this.isAfter) {
+    if (direction === "left" && this.isAfter) {
       this.extra += this.widthTotal;
       this.isBefore = this.isAfter = false;
     }
   }
   onResize({ screen, viewport } = {}) {
     if (screen) this.screen = screen;
-    if (viewport) {
-      this.viewport = viewport;
-      if (this.plane.program.uniforms.uViewportSizes) {
-        this.plane.program.uniforms.uViewportSizes.value = [this.viewport.width, this.viewport.height];
-      }
-    }
+    if (viewport) this.viewport = viewport;
+
     this.scale = this.screen.height / 1500;
     this.plane.scale.y = (this.viewport.height * (900 * this.scale)) / this.screen.height;
     this.plane.scale.x = (this.viewport.width * (700 * this.scale)) / this.screen.width;
     this.plane.program.uniforms.uPlaneSizes.value = [this.plane.scale.x, this.plane.scale.y];
+
     this.padding = 2;
     this.width = this.plane.scale.x + this.padding;
     this.widthTotal = this.width * this.length;
@@ -284,17 +278,19 @@ class App {
     {
       items,
       bend,
-      textColor = '#ffffff',
+      textColor = "#ffffff",
       borderRadius = 0.05,
-      font = 'bold 30px Figtree',
+      font = "bold 30px sans-serif",
       scrollSpeed = 2,
-      scrollEase = 0.05
+      scrollEase = 0.05,
+      onItemClick = null,
     } = {}
   ) {
-    document.documentElement.classList.remove('no-js');
+    document.documentElement.classList.remove("no-js");
     this.container = container;
     this.scrollSpeed = scrollSpeed;
     this.scroll = { ease: scrollEase, current: 0, target: 0, last: 0 };
+    this.onItemClick = onItemClick;
     this.onCheckDebounce = debounce(this.onCheck, 200);
     this.createRenderer();
     this.createCamera();
@@ -305,11 +301,12 @@ class App {
     this.update();
     this.addEventListeners();
   }
+
   createRenderer() {
     this.renderer = new Renderer({
       alpha: true,
       antialias: true,
-      dpr: Math.min(window.devicePixelRatio || 1, 2)
+      dpr: Math.min(window.devicePixelRatio || 1, 2),
     });
     this.gl = this.renderer.gl;
     this.gl.clearColor(0, 0, 0, 0);
@@ -324,28 +321,24 @@ class App {
     this.scene = new Transform();
   }
   createGeometry() {
-    this.planeGeometry = new Plane(this.gl, {
-      heightSegments: 50,
-      widthSegments: 100
-    });
+    this.planeGeometry = new Plane(this.gl, { heightSegments: 50, widthSegments: 100 });
   }
+
   createMedias(items, bend = 1, textColor, borderRadius, font) {
-    const defaultItems = [
-      { image: `https://picsum.photos/seed/1/800/600?grayscale`, text: 'Bridge' },
-      { image: `https://picsum.photos/seed/2/800/600?grayscale`, text: 'Desk Setup' },
-      { image: `https://picsum.photos/seed/3/800/600?grayscale`, text: 'Waterfall' },
-      { image: `https://picsum.photos/seed/4/800/600?grayscale`, text: 'Strawberries' },
-      { image: `https://picsum.photos/seed/5/800/600?grayscale`, text: 'Deep Diving' },
-      { image: `https://picsum.photos/seed/16/800/600?grayscale`, text: 'Train Track' },
-      { image: `https://picsum.photos/seed/17/800/600?grayscale`, text: 'Santorini' },
-      { image: `https://picsum.photos/seed/8/800/600?grayscale`, text: 'Blurry Lights' },
-      { image: `https://picsum.photos/seed/9/800/600?grayscale`, text: 'New York' },
-      { image: `https://picsum.photos/seed/10/800/600?grayscale`, text: 'Good Boy' },
-      { image: `https://picsum.photos/seed/21/800/600?grayscale`, text: 'Coastline' },
-      { image: `https://picsum.photos/seed/12/800/600?grayscale`, text: 'Palm Trees' }
+    const defaults = [
+      { image: `https://picsum.photos/seed/1/800/600?grayscale`, text: "Bridge" },
+      { image: `https://picsum.photos/seed/2/800/600?grayscale`, text: "Desk Setup" },
+      { image: `https://picsum.photos/seed/3/800/600?grayscale`, text: "Waterfall" },
+      { image: `https://picsum.photos/seed/4/800/600?grayscale`, text: "Strawberries" },
+      { image: `https://picsum.photos/seed/5/800/600?grayscale`, text: "Deep Diving" },
+      { image: `https://picsum.photos/seed/16/800/600?grayscale`, text: "Train Track" },
     ];
-    const galleryItems = items && items.length ? items : defaultItems;
-    this.mediasImages = galleryItems.concat(galleryItems);
+    this.items = items && items.length ? items : defaults;
+    this.originalLength = this.items.length;
+
+    // 무한 스크롤을 위해 2배로 복제
+    this.mediasImages = this.items.concat(this.items);
+
     this.medias = this.mediasImages.map((data, index) => {
       return new Media({
         geometry: this.planeGeometry,
@@ -353,7 +346,6 @@ class App {
         image: data.image,
         index,
         length: this.mediasImages.length,
-        renderer: this.renderer,
         scene: this.scene,
         screen: this.screen,
         text: data.text,
@@ -361,30 +353,52 @@ class App {
         bend,
         textColor,
         borderRadius,
-        font
+        font,
+        data,
+        originalIndex: index % this.originalLength,
       });
     });
   }
+
+  // 입력 처리
   onTouchDown(e) {
     this.isDown = true;
+    this.dragged = false;
     this.scroll.position = this.scroll.current;
-    this.start = e.touches ? e.touches[0].clientX : e.clientX;
+    const p = e.touches ? e.touches[0] : e;
+    this.startX = p.clientX;
+    this.startY = p.clientY;
+    this.startTime = Date.now();
   }
   onTouchMove(e) {
     if (!this.isDown) return;
-    const x = e.touches ? e.touches[0].clientX : e.clientX;
-    const distance = (this.start - x) * (this.scrollSpeed * 0.025);
+    const p = e.touches ? e.touches[0] : e;
+    const dx = p.clientX - this.startX;
+    const dy = p.clientY - this.startY;
+    if (Math.hypot(dx, dy) > 5) this.dragged = true;
+
+    const distance = (this.startX - p.clientX) * (this.scrollSpeed * 0.025);
     this.scroll.target = this.scroll.position + distance;
   }
   onTouchUp() {
+    if (!this.isDown) return;
     this.isDown = false;
-    this.onCheck();
+
+    // 클릭 판단: 이동 적고, 짧은 탭
+    const dt = Date.now() - this.startTime;
+    if (!this.dragged && dt < 300) {
+      this.handleClick();
+    } else {
+      this.onCheck();
+    }
   }
   onWheel(e) {
     const delta = e.deltaY || e.wheelDelta || e.detail;
     this.scroll.target += (delta > 0 ? this.scrollSpeed : -this.scrollSpeed) * 0.2;
     this.onCheckDebounce();
   }
+
+  // 중앙 항목 스냅
   onCheck() {
     if (!this.medias || !this.medias[0]) return;
     const width = this.medias[0].width;
@@ -392,62 +406,92 @@ class App {
     const item = width * itemIndex;
     this.scroll.target = this.scroll.target < 0 ? -item : item;
   }
+
+  // 중앙 아이템 계산 & 클릭 콜백
+  getActiveIndex() {
+    if (!this.medias || !this.medias[0]) return 0;
+    const width = this.medias[0].width;
+    const i = Math.round(Math.abs(this.scroll.target) / width);
+    // 원본 길이 기준으로 반환
+    return i % this.originalLength;
+  }
+  handleClick() {
+    if (!this.onItemClick) return;
+    const idx = this.getActiveIndex();
+    const data = this.items[idx];
+    this.onItemClick(data.payload ?? data);
+  }
+
   onResize() {
     this.screen = {
       width: this.container.clientWidth,
-      height: this.container.clientHeight
+      height: this.container.clientHeight,
     };
     this.renderer.setSize(this.screen.width, this.screen.height);
-    this.camera.perspective({
-      aspect: this.screen.width / this.screen.height
-    });
+    this.camera.perspective({ aspect: this.screen.width / this.screen.height });
+
     const fov = (this.camera.fov * Math.PI) / 180;
     const height = 2 * Math.tan(fov / 2) * this.camera.position.z;
     const width = height * this.camera.aspect;
     this.viewport = { width, height };
+
     if (this.medias) {
-      this.medias.forEach(media => media.onResize({ screen: this.screen, viewport: this.viewport }));
+      this.medias.forEach((m) => m.onResize({ screen: this.screen, viewport: this.viewport }));
     }
   }
+
   update() {
     this.scroll.current = lerp(this.scroll.current, this.scroll.target, this.scroll.ease);
-    const direction = this.scroll.current > this.scroll.last ? 'right' : 'left';
-    if (this.medias) {
-      this.medias.forEach(media => media.update(this.scroll, direction));
-    }
+    const direction = this.scroll.current > this.scroll.last ? "right" : "left";
+    if (this.medias) this.medias.forEach((m) => m.update(this.scroll, direction));
     this.renderer.render({ scene: this.scene, camera: this.camera });
     this.scroll.last = this.scroll.current;
     this.raf = window.requestAnimationFrame(this.update.bind(this));
   }
+
   addEventListeners() {
+    // 컨테이너 기준 이벤트(버블링 줄이기)
     this.boundOnResize = this.onResize.bind(this);
     this.boundOnWheel = this.onWheel.bind(this);
-    this.boundOnTouchDown = this.onTouchDown.bind(this);
-    this.boundOnTouchMove = this.onTouchMove.bind(this);
-    this.boundOnTouchUp = this.onTouchUp.bind(this);
+    this.boundOnDown = this.onTouchDown.bind(this);
+    this.boundOnMove = this.onTouchMove.bind(this);
+    this.boundOnUp = this.onTouchUp.bind(this);
+    this.boundOnClick = () => this.handleClick();
 
-    window.addEventListener('resize', this.boundOnResize);
-    window.addEventListener('mousewheel', this.boundOnWheel);
-    window.addEventListener('wheel', this.boundOnWheel);
-    window.addEventListener('mousedown', this.boundOnTouchDown);
-    window.addEventListener('mousemove', this.boundOnTouchMove);
-    window.addEventListener('mouseup', this.boundOnTouchUp);
-    window.addEventListener('touchstart', this.boundOnTouchDown, { passive: true });
-    window.addEventListener('touchmove', this.boundOnTouchMove, { passive: true });
-    window.addEventListener('touchend', this.boundOnTouchUp);
+    window.addEventListener("resize", this.boundOnResize, { passive: true });
+    this.container.addEventListener("wheel", this.boundOnWheel, { passive: true });
+
+    // 마우스
+    this.container.addEventListener("mousedown", this.boundOnDown);
+    window.addEventListener("mousemove", this.boundOnMove);
+    window.addEventListener("mouseup", this.boundOnUp);
+
+    // 터치
+    this.container.addEventListener("touchstart", this.boundOnDown, { passive: true });
+    this.container.addEventListener("touchmove", this.boundOnMove, { passive: true });
+    this.container.addEventListener("touchend", this.boundOnUp);
+
+    // 탭/클릭(드래그 아닌 경우만 handleClick에서 처리)
+    this.container.addEventListener("click", this.boundOnClick);
   }
+
   destroy() {
     window.cancelAnimationFrame(this.raf);
-    window.removeEventListener('resize', this.boundOnResize);
-    window.removeEventListener('mousewheel', this.boundOnWheel);
-    window.removeEventListener('wheel', this.boundOnWheel);
-    window.removeEventListener('mousedown', this.boundOnTouchDown);
-    window.removeEventListener('mousemove', this.boundOnTouchMove);
-    window.removeEventListener('mouseup', this.boundOnTouchUp);
-    window.removeEventListener('touchstart', this.boundOnTouchDown);
-    window.removeEventListener('touchmove', this.boundOnTouchMove);
-    window.removeEventListener('touchend', this.boundOnTouchUp);
-    if (this.renderer && this.renderer.gl && this.renderer.gl.canvas.parentNode) {
+
+    window.removeEventListener("resize", this.boundOnResize);
+    this.container.removeEventListener("wheel", this.boundOnWheel);
+
+    this.container.removeEventListener("mousedown", this.boundOnDown);
+    window.removeEventListener("mousemove", this.boundOnMove);
+    window.removeEventListener("mouseup", this.boundOnUp);
+
+    this.container.removeEventListener("touchstart", this.boundOnDown);
+    this.container.removeEventListener("touchmove", this.boundOnMove);
+    this.container.removeEventListener("touchend", this.boundOnUp);
+
+    this.container.removeEventListener("click", this.boundOnClick);
+
+    if (this.renderer?.gl?.canvas?.parentNode) {
       this.renderer.gl.canvas.parentNode.removeChild(this.renderer.gl.canvas);
     }
   }
@@ -456,18 +500,28 @@ class App {
 export default function CircularGallery({
   items,
   bend = 3,
-  textColor = '#ffffff',
+  textColor = "#ffffff",
   borderRadius = 0.05,
-  font = 'bold 30px Figtree',
+  font = "bold 30px sans-serif",
   scrollSpeed = 2,
-  scrollEase = 0.05
+  scrollEase = 0.05,
+  onItemClick, // ✅ 부모 콜백
 }) {
   const containerRef = useRef(null);
+
   useEffect(() => {
-    const app = new App(containerRef.current, { items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase });
-    return () => {
-      app.destroy();
-    };
-  }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase]);
+    const app = new App(containerRef.current, {
+      items,
+      bend,
+      textColor,
+      borderRadius,
+      font,
+      scrollSpeed,
+      scrollEase,
+      onItemClick,
+    });
+    return () => app.destroy();
+  }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, onItemClick]);
+
   return <div className="circular-gallery" ref={containerRef} />;
 }
