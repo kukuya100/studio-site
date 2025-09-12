@@ -342,16 +342,18 @@ function PortfolioTile({ item, onFallbackClick, t }) {
 
   const frameSrc =
     inView && vimeoId
-      ? `https://player.vimeo.com/video/${vimeoId}?title=0&byline=0&portrait=0&controls=0&autopause=1&dnt=1`
+      ? `https://player.vimeo.com/video/${vimeoId}?title=0&byline=0&portrait=0&controls=0&autopause=1&dnt=1&transparent=0`
       : undefined;
 
   const CardInner = (
     <>
-      <div ref={ref} className={cx("relative w-full overflow-hidden", ratioClass)}>
+      <div ref={ref} className={cx("relative w-full overflow-hidden bg-black", ratioClass)}>
+
         {vimeoId ? (
           <iframe
             className="absolute inset-0 h-full w-full pointer-events-none"
             src={frameSrc}
+            style={{ backgroundColor: '#000' }}   // 안전망
             allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
             loading="lazy"
             title={item.title || "Vimeo"}
@@ -519,9 +521,16 @@ export default function App() {
       {/* NAV */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-black/30 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-3 md:px-8">
-          <a href="#" className="text-lg font-semibold tracking-tight text-white">
-            TheRenderStudio
-          </a>
+              <a href="#" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white">
+      <img
+        src={resolveAsset("icons/rndr_logo_white.png")}
+        alt="TheRenderStudio logo"
+        className="h-7 w-7 block"
+        loading="lazy"
+        decoding="async"
+      />
+      <span>TheRenderStudio</span>
+    </a>
 
           <nav className="hidden items-center gap-6 md:flex">
             <a href="#projects" className="text-sm text-white/80 hover:text-white">
