@@ -5,10 +5,13 @@ import {
   Scene as i,
   WebGLRenderer as s,
   SRGBColorSpace as n,
+  TextureLoader as TL,
   MathUtils as o,
   Vector2 as r,
   Vector3 as a,
   MeshPhysicalMaterial as c,
+  MeshBasicMaterial as b,      // ✅ 로고 공은 Basic (조명/톤매핑 무시)
+  Mesh as q,
   ShaderChunk as h,
   Color as l,
   Object3D as m,
@@ -19,14 +22,13 @@ import {
   PointLight as u,
   ACESFilmicToneMapping as v,
   Raycaster as y,
-  Plane as w
+  Plane as w,
+  CanvasTexture as CT         // ✅ 캔버스 합성 텍스처
 } from 'three';
 import { RoomEnvironment as z } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 /* ------------------------------------------------
    렌더 엔진 (x)
-   - 초기 뷰포트 기준으로 사이즈/해상도 결정
-   - 주소창 애니 등 사소한 리사이즈 무시
 ------------------------------------------------- */
 class x {
   #e;
@@ -57,11 +59,11 @@ class x {
 
   // 안정화 옵션
   ignoreMinorResizes = true;
-  minorResizeThreshold = 120; // px: 이보다 작은 세로 변화는 무시
+  minorResizeThreshold = 120;
   lockPixelRatio = false;
   #initialPixelRatio = null;
 
-  // 기준 사이즈(초기 최대값 유지)
+  // 기준 사이즈
   #baseline = { w: 0, h: 0 };
   #lastApplied = { w: 0, h: 0 };
 
@@ -75,22 +77,13 @@ class x {
     this.#d();
     this.#p();
 
-    // 최초 사이즈 계산 (최대값 기반)
     this.resize(true);
-
-    // UI 관성 애니메이션이 끝난 뒤 한 번 더 보정
     setTimeout(() => this.resize(true), 600);
-
     this.#g();
   }
 
-  #m() {
-    this.camera = new t();
-    this.cameraFov = this.camera.fov;
-  }
-  #d() {
-    this.scene = new i();
-  }
+  #m() { this.camera = new t(); this.cameraFov = this.camera.fov; }
+  #d() { this.scene = new i(); }
   #p() {
     if (this.#e.canvas) this.canvas = this.#e.canvas;
     else if (this.#e.id) this.canvas = document.getElementById(this.#e.id);
@@ -123,26 +116,14 @@ class x {
     this.#o?.disconnect();
     document.removeEventListener('visibilitychange', this.#v.bind(this));
   }
-  #u(e) {
-    this.#s = e[0].isIntersecting;
-    this.#s ? this.#w() : this.#z();
-  }
-  #v() {
-    if (this.#s) document.hidden ? this.#z() : this.#w();
-  }
-  #f() {
-    if (this.#a) clearTimeout(this.#a);
-    this.#a = setTimeout(this.resize.bind(this), 250);
-  }
+  #u(e) { this.#s = e[0].isIntersecting; this.#s ? this.#w() : this.#z(); }
+  #v() { if (this.#s) document.hidden ? this.#z() : this.#w(); }
+  #f() { if (this.#a) clearTimeout(this.#a); this.#a = setTimeout(this.resize.bind(this), 250); }
 
-  // 부모/뷰포트에서 "가장 넓은" 값으로 측정
   #measure() {
     const parent = this.canvas.parentNode;
     const rect = parent?.getBoundingClientRect?.();
-    const fromParent = {
-      w: Math.round(rect?.width || 0),
-      h: Math.round(rect?.height || 0)
-    };
+    const fromParent = { w: Math.round(rect?.width || 0), h: Math.round(rect?.height || 0) };
 
     const vv = window.visualViewport;
     const fromViewport = {
@@ -151,16 +132,12 @@ class x {
     };
 
     if (this.#e.size === 'parent') {
-      return {
-        w: Math.max(fromParent.w, fromViewport.w),
-        h: Math.max(fromParent.h, fromViewport.h)
-      };
+      return { w: Math.max(fromParent.w, fromViewport.w), h: Math.max(fromParent.h, fromViewport.h) };
     }
     return fromViewport;
   }
 
   resize(force = false) {
-    // 터치 중엔 스킵
     if (!force && INTERACTING) return;
 
     let { w: e, h: t } = this.#e.size instanceof Object
@@ -177,13 +154,7 @@ class x {
     const dH = Math.abs(t - prevH);
     const orientationChanged = (e > t) !== (prevW > prevH);
 
-    if (
-      !force &&
-      this.ignoreMinorResizes &&
-      !orientationChanged &&
-      dW <= 2 &&
-      dH < this.minorResizeThreshold
-    ) {
+    if (!force && this.ignoreMinorResizes && !orientationChanged && dW <= 2 && dH < this.minorResizeThreshold) {
       return;
     }
 
@@ -207,13 +178,9 @@ class x {
   #x() {
     this.camera.aspect = this.size.width / this.size.height;
     if (this.camera.isPerspectiveCamera && this.cameraFov) {
-      if (this.cameraMinAspect && this.camera.aspect < this.cameraMinAspect) {
-        this.#A(this.cameraMinAspect);
-      } else if (this.cameraMaxAspect && this.camera.aspect > this.cameraMaxAspect) {
-        this.#A(this.cameraMaxAspect);
-      } else {
-        this.camera.fov = this.cameraFov;
-      }
+      if (this.cameraMinAspect && this.camera.aspect < this.cameraMinAspect) this.#A(this.cameraMinAspect);
+      else if (this.cameraMaxAspect && this.camera.aspect > this.cameraMaxAspect) this.#A(this.cameraMaxAspect);
+      else this.camera.fov = this.cameraFov;
     }
     this.camera.updateProjectionMatrix();
     this.updateWorldSize();
@@ -227,9 +194,6 @@ class x {
       const e = (this.camera.fov * Math.PI) / 180;
       this.size.wHeight = 2 * Math.tan(e / 2) * this.camera.position.length();
       this.size.wWidth = this.size.wHeight * this.camera.aspect;
-    } else if (this.camera.isOrthographicCamera) {
-      this.size.wHeight = this.camera.top - this.camera.bottom;
-      this.size.wWidth = this.camera.right - this.camera.left;
     }
   }
   #b() {
@@ -273,9 +237,7 @@ class x {
       this.#c.stop();
     }
   }
-  #i() {
-    this.renderer.render(this.scene, this.camera);
-  }
+  #i() { this.renderer.render(this.scene, this.camera); }
   clear() {
     this.scene.traverse(e => {
       if (e.isMesh && typeof e.material === 'object' && e.material !== null) {
@@ -610,29 +572,76 @@ const X = {
 
 const U = new m();
 
-class Z extends d {
+/* ------------------------------------------------
+   InstancedMesh + 로고 Mesh 컨테이너 (Z)
+------------------------------------------------- */
+class Z extends m {
   constructor(renderer, t = {}) {
-    const i = { ...X, ...t };
+    super();
+    this.config = { ...X, ...t };
+
+    // 환경맵
     const env = new z();
     const pmrem = new p(renderer);
     const envTex = pmrem.fromScene(env, 0.04).texture;
 
+    // 나머지 공들용 InstancedMesh
     const geom = new g();
-    const mat = new Y({ envMap: envTex, ...i.materialParams });
-    mat.envMapRotation.x = -Math.PI / 2;
+    const instMat = new Y({ envMap: envTex, ...this.config.materialParams });
+    instMat.envMapRotation.x = -Math.PI / 2;
 
-    super(geom, mat, i.count);
-    this.config = i;
-    this.physics = new W(i);
-    this.#lights();
-    this.setColors(i.colors);
-  }
-  #lights() {
+    this.im = new d(geom, instMat, Math.max(0, this.config.count - 1));
+    this.add(this.im);
+
+    // 물리
+    this.physics = new W(this.config);
+
+    // 라이트
     this.ambientLight = new f(this.config.ambientColor, this.config.ambientIntensity);
     this.add(this.ambientLight);
-    this.light = new u(this.config.colors[0], this.config.lightIntensity);
+    this.light = new u(0xffffff, this.config.lightIntensity);
     this.add(this.light);
+
+    // 컬러 그라데이션
+    this.setColors(this.config.colors);
+
+    // 로고 공 (조명/톤매핑 무시, 불투명)
+    // const logoTex = this.config.logoTexture || null;
+    // const logoMat = new b({
+    //   map: logoTex || null,
+    //   transparent: false,    // ✅ 마스크 방지 (투명 OFF)
+    //   toneMapped: false,     // ✅ ACES 무시 → 색 보존
+    //   depthTest: true,
+    //   depthWrite: true
+    // });
+
+
+    // 로고 공 (조명 받음, PBR)
+   const logoTex = this.config.logoTexture || null;
+   const logoMat = new c({
+   map: logoTex || null,
+   envMap: envTex,            // 환경맵 반사
+   metalness: 0.35,
+   roughness: 0.5,
+   clearcoat: 1,
+   clearcoatRoughness: 0.2,
+   transparent: false,        // ✅ 계속 불투명 (마스크 금지)
+   toneMapped: true,          // ✅ 조명/ACES 적용
+   // 살짝 기본 밝기 유지하고 싶으면 아래 3줄 추가(옵션)
+   emissive: new l(0xffffff),
+   emissiveMap: logoTex || null,
+   emissiveIntensity: 0.12,
+ });
+
+
+
+
+
+    this.logoBall = new q(new g(), logoMat);
+    this.logoBall.renderOrder = 999;
+    this.add(this.logoBall);
   }
+
   setColors(cols) {
     if (Array.isArray(cols) && cols.length > 1) {
       const grad = (() => {
@@ -654,24 +663,74 @@ class Z extends d {
           }
         };
       })();
-      for (let idx = 0; idx < this.count; idx++) {
-        this.setColorAt(idx, grad.getColorAt(idx / this.count));
-        if (idx === 0) this.light.color.copy(grad.getColorAt(idx / this.count));
+
+      for (let instIdx = 0; instIdx < this.im.count; instIdx++) {
+        const ratio = (instIdx + 1) / this.config.count; // 0번(로고) 제외
+        this.im.setColorAt(instIdx, grad.getColorAt(ratio));
       }
-      this.instanceColor.needsUpdate = true;
+      this.im.instanceColor && (this.im.instanceColor.needsUpdate = true);
+      this.light.color.copy(grad.getColorAt(0));
     }
   }
+
   update(e) {
     this.physics.update(e);
-    for (let idx = 0; idx < this.count; idx++) {
+
+    // 0번(로고) 위치/스케일
+    U.position.fromArray(this.physics.positionData, 0);
+    const logoScale = this.config.followCursor === false ? 0 : this.physics.sizeData[0];
+    U.scale.setScalar(logoScale);
+    this.logoBall.position.copy(U.position);
+    this.logoBall.scale.copy(U.scale);
+    this.light.position.copy(U.position);
+
+    // 나머지 (1..count-1) → InstancedMesh 채우기
+    for (let idx = 1; idx < this.config.count; idx++) {
       U.position.fromArray(this.physics.positionData, 3 * idx);
-      U.scale.setScalar(idx === 0 && this.config.followCursor === false ? 0 : this.physics.sizeData[idx]);
+      U.scale.setScalar(this.physics.sizeData[idx]);
       U.updateMatrix();
-      this.setMatrixAt(idx, U.matrix);
-      if (idx === 0) this.light.position.copy(U.position);
+      this.im.setMatrixAt(idx - 1, U.matrix);
     }
-    this.instanceMatrix.needsUpdate = true;
+    this.im.instanceMatrix.needsUpdate = true;
   }
+}
+
+/* ------------------------------------------------
+   투명 PNG → 배경합성 CanvasTexture (불투명)
+------------------------------------------------- */
+ function composeLogoTexture(
+   rawTex,
+   { bg = '#ffffff', scale = 0.65, flipY = false, shiftX = 0, shiftY = 0 } = {}
+ ) {
+  const img = rawTex.image;
+  const S = Math.max(img.width, img.height);
+  const size = Math.min(2048, Math.pow(2, Math.ceil(Math.log2(S))));
+  const cv = document.createElement('canvas');
+  cv.width = size; cv.height = size;
+  const ctx = cv.getContext('2d');
+
+  // 배경 채우기 → 투명영역 제거(마스크 방지)
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, size, size);
+
+  // 로고 비율 유지, 중앙 배치
+  const target = size * Math.max(0.1, Math.min(1, scale));
+  const aspect = img.width / img.height;
+  let w, h;
+  if (aspect >= 1) { w = target; h = target / aspect; }
+  else { h = target; w = target * aspect; }
+ // 중앙 기준으로 이동/플립 적용
+ ctx.save();
+ ctx.translate(size / 2 + shiftX * size, size / 2 + shiftY * size);
+ if (flipY) ctx.scale(1, -1); // ⬅️ 위아래 뒤집기
+ ctx.drawImage(img, -w / 2, -h / 2, w, h);
+ ctx.restore();
+
+  const tex = new CT(cv);
+  tex.colorSpace = n;
+  tex.flipY = false; // SphereGeometry 기본 UV에 맞춤
+  tex.needsUpdate = true;
+  return tex;
 }
 
 /* ------------------------------------------------
@@ -695,6 +754,34 @@ function createBallpit(canvas, opts = {}) {
   i.camera.lookAt(0, 0, 0);
   i.cameraMaxAspect = 1.5;
 
+  // 로고 텍스처 로드 (BASE_URL 반영)
+  const texLoader = new TL();
+  let logoTexture = null;
+  texLoader.load(
+    opts.logoUrl || '/images/logo.png',
+    (raw) => {
+      raw.colorSpace = n;
+      raw.needsUpdate = true;
+      // ✅ 투명 PNG → 배경 합성 (불투명)으로 교체
+      const composed = composeLogoTexture(raw, {
+        bg: '#ffffff',           // 필요 시 브랜드 색으로 변경
+        scale: 0.2,              // 로고 크기 비율(0~1)
+        flipY: true,
+        shiftX: -0.25
+      });
+      logoTexture = composed;
+
+      // 이미 장면이 만들어진 상태면 즉시 교체
+      if (inst?.logoBall?.material) {
+        inst.logoBall.material.map = composed;
+        inst.logoBall.material.transparent = false;
+        inst.logoBall.material.needsUpdate = true;
+      }
+    },
+    undefined,
+    () => { console.warn('[Ballpit] logo 텍스처를 불러오지 못했습니다:', opts.logoUrl); }
+  );
+
   init(opts);
 
   const ray = new y();
@@ -702,7 +789,6 @@ function createBallpit(canvas, opts = {}) {
   const hit = new a();
   let paused = false;
 
-  // 스크롤 허용 + 텍스트 선택 방지
   canvas.style.touchAction = 'pan-y';
   canvas.style.userSelect = 'none';
   canvas.style.webkitUserSelect = 'none';
@@ -721,7 +807,8 @@ function createBallpit(canvas, opts = {}) {
 
   function init(cfg) {
     if (inst) { i.clear(); i.scene.remove(inst); }
-    inst = new Z(i.renderer, cfg);
+    // 초기엔 logoTexture가 null일 수 있음 → 이후 onLoad에서 즉시 material.map 교체
+    inst = new Z(i.renderer, { ...cfg, logoTexture });
     i.scene.add(inst);
   }
 
@@ -740,14 +827,14 @@ function createBallpit(canvas, opts = {}) {
   };
 }
 
-const Ballpit = ({ className = '', followCursor = true, ...props }) => {
+const Ballpit = ({ className = '', followCursor = true, logoUrl = '/images/logo.png', ...props }) => {
   const canvasRef = useRef(null);
   const ref = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    ref.current = createBallpit(canvas, { followCursor, ...props });
+    ref.current = createBallpit(canvas, { followCursor, logoUrl, ...props });
     return () => ref.current?.dispose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

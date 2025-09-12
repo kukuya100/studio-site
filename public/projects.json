@@ -1,25 +1,13 @@
 [
-  {
-    "id": "2025-09-aurora",
-    "title": "Aurora Shell – Media Facade",
-    "year": 2025,
-    "client": "City Art Center",
-    "tags": ["Projection", "Interactive"],
-    "summary": "9채널 프로젝션과 라이다 기반 인터랙션.",
-    "cover": "images/aurora/cover.jpg",
-    "images": ["images/aurora/1.jpg", "images/aurora/2.jpg"],
-    "description": "현대적 입면 위를 흐르는 오로라 테마의 인터랙티브 모션 그래픽."
-  },
 
-    {
-    "id": "2025-09-aurora",
-    "title": "Aurora Shell – Media Facade",
-    "year": 2025,
-    "client": "City Art Center",
-    "tags": ["Projection", "Interactive"],
-    "summary": "9채널 프로젝션과 라이다 기반 인터랙션.",
-    "cover": "images/aurora/cover.jpg",
-    "images": ["images/aurora/1.jpg", "images/aurora/2.jpg"],
-    "description": "현대적 입면 위를 흐르는 오로라 테마의 인터랙티브 모션 그래픽."
-  }
+  { "id": "1044260299", "title": "Project 01", "href": "https://vimeo.com/1044260299", "poster": "images/portfolio/1044260299.jpg" },
+  { "id": "1044260330", "title": "Project 02", "href": "https://vimeo.com/1044260330", "poster": "images/portfolio/1044260330.jpg" },
+  { "id": "1044362256", "title": "Project 03", "href": "https://vimeo.com/1044362256", "poster": "images/portfolio/1044362256.jpg" },
+  { "id": "1044362375", "title": "Project 04", "href": "https://vimeo.com/1044362375", "poster": "images/portfolio/1044362375.jpg" },
+  { "id": "1044362401", "title": "Project 05", "href": "https://vimeo.com/1044362401", "poster": "images/portfolio/1044362401.jpg" },
+  { "id": "1044362435", "title": "Project 06", "href": "https://vimeo.com/1044362435", "poster": "images/portfolio/1044362435.jpg" },
+  { "id": "1045177691", "title": "Project 07", "href": "https://vimeo.com/1045177691", "poster": "images/portfolio/1045177691.jpg" },
+  { "id": "1045177735", "title": "Project 08", "href": "https://vimeo.com/1045177735", "poster": "images/portfolio/1045177735.jpg" },
+  { "id": "1044994120", "title": "Project 09", "href": "https://vimeo.com/1044994120", "poster": "images/portfolio/1044994120.jpg" },
+  { "id": "1044975282", "title": "Project 10", "href": "https://vimeo.com/1044975282", "poster": "images/portfolio/1044975282.jpg" }
 ]

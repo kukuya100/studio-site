@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import BallPit from "./Backgrounds/Ballpit/Ballpit";
-import CircularGallery from "./Components/CircularGallery/CircularGallery"; // ✅ 캐러셀
 
-// ========= 유틸 =========
+/* ========= Utils ========= */
 const cx = (...classes) => classes.filter(Boolean).join(" ");
 const glass =
   "backdrop-blur-xl bg-white/5 dark:bg-black/20 border border-white/10 shadow-[0_0_1px_#fff_inset,0_10px_40px_-10px_rgba(0,0,0,0.5)]";
 
-// BASE_URL을 사용해 정적 자산 경로 자동 보정
 const resolveAsset = (p) => {
   if (!p) return p;
   if (/^https?:\/\//i.test(p)) return p;
@@ -15,7 +13,7 @@ const resolveAsset = (p) => {
   return `${base}/${p.replace(/^\//, "")}`;
 };
 
-// ========= “커질 때만 확장” 뷰포트 천장 훅 =========
+/* ========= Viewport ceil ========= */
 function useViewportCeil() {
   useEffect(() => {
     let maxH = 0;
@@ -34,7 +32,6 @@ function useViewportCeil() {
 
     updateUpOnly();
     setTimeout(updateUpOnly, 300);
-
     const onResize = () => updateUpOnly();
     window.addEventListener("resize", onResize, { passive: true });
 
@@ -51,7 +48,98 @@ function useViewportCeil() {
   }, []);
 }
 
-// ========= 샘플 데이터 =========
+/* ========= i18n (KR는 Services만 한국어, 나머지는 영어 유지) ========= */
+const I18N = {
+  en: {
+    navProjects: "Projects",
+    navContact: "Contact",
+    heroTitle: "Where Visual Creativity Meets Technology",
+    heroSubtitle:
+      "A creative studio shaping immersive visual experiences with innovation.",
+    btnViewProjects: "View Projects",
+    btnContact: "Contact",
+    portfolioTitle: "Portfolio",
+    portfolioDesc: "Click a tile to open the project page.",
+    searchPlaceholder: "Search…",
+    tagAll: "All",
+    vimeoLink: "Vimeo ↗",
+    // Services (EN)
+    servicesTitle1: "Creative Direction",
+    servicesDesc1:
+      "We expand ideas into experiences — from concept planning to art direction and prototyping, crafting narratives for brands and spaces.",
+    servicesTitle2: "Brand Experiences",
+    servicesDesc2:
+      "We visualize brand identity sensibly — from advertising & brand films to interactive showcases, turning messages into artistic experiences.",
+    servicesTitle3: "Media Art & Production",
+    servicesDesc3:
+      "We combine high-end media art with real-time pipelines to deliver large-scale projection, LED, and sensor/server integrated works.",
+    // Rest of UI stays English even for ko
+    aboutTitle: "About",
+    aboutP1:
+      "TheRenderStudio creates media art and interactive content—bridging spaces, screens, and participation to craft stories for brands and exhibitions.",
+    founded: "Founded — 2019",
+    location: "Seoul, KR",
+    team: "Team — Small",
+    partners: "Partners — Museums · Agencies · Brands",
+    showreel: "Showreel",
+    projectInquiry: "Project Inquiry",
+    contactTitle: "Let’s build something luminous.",
+    contactSubtitle:
+      "We welcome project proposals. From early ideas to concrete plans, we deliver tailored solutions optimized to your schedule and budget.",
+    footerProjects: "Projects",
+    footerContact: "Contact",
+    more: "More",
+  },
+  ko: {
+    // 모든 기본 UI 문구는 영어 그대로 유지
+    navProjects: "Projects",
+    navContact: "Contact",
+    heroTitle: "Where Visual Creativity Meets Technology",
+    heroSubtitle:
+      "A creative studio shaping immersive visual experiences with innovation.",
+    btnViewProjects: "View Projects",
+    btnContact: "Contact",
+    portfolioTitle: "Portfolio",
+    portfolioDesc: "Click a tile to open the project page.",
+    searchPlaceholder: "Search…",
+    tagAll: "All",
+    vimeoLink: "Vimeo ↗",
+    // Services만 한국어
+    servicesTitle1: "크리에이티브 디렉션",
+    servicesDesc1:
+      "아이디어를 경험으로 확장합니다 — 콘셉트 기획부터 아트 디렉션, 프로토타이핑까지, 브랜드와 공간의 서사를 설계합니다.",
+    servicesTitle2: "브랜드 익스피리언스",
+    servicesDesc2:
+      "광고·브랜드 필름부터 인터랙티브 쇼케이스까지 브랜드 아이덴티티를 감각적으로 시각화하여 메시지를 예술적 경험으로 전환합니다.",
+    servicesTitle3: "미디어 아트 & 프로덕션",
+    servicesDesc3:
+      "하이엔드 미디어아트와 실시간 파이프라인을 결합해 대규모 프로젝션, LED, 센서/서버 연동 작업을 구현합니다.",
+    // 나머지 UI도 영어
+    aboutTitle: "About",
+    aboutP1:
+      "TheRenderStudio creates media art and interactive content—bridging spaces, screens, and participation to craft stories for brands and exhibitions.",
+    founded: "Founded — 2019",
+    location: "Seoul, KR",
+    team: "Team — Small",
+    partners: "Partners — Museums · Agencies · Brands",
+    showreel: "Showreel",
+    projectInquiry: "Project Inquiry",
+    contactTitle: "Let’s build something luminous.",
+    contactSubtitle:
+      "We welcome project proposals. From early ideas to concrete plans, we deliver tailored solutions optimized to your schedule and budget.",
+    footerProjects: "Projects",
+    footerContact: "Contact",
+    more: "More",
+  },
+};
+
+const SERVICES = (t) => [
+  { t: t.servicesTitle1, d: t.servicesDesc1 },
+  { t: t.servicesTitle2, d: t.servicesDesc2 },
+  { t: t.servicesTitle3, d: t.servicesDesc3 },
+];
+
+/* ========= Sample projects (local fallback) ========= */
 const SAMPLE_PROJECTS = [
   {
     id: "2025-09-aurora",
@@ -64,6 +152,7 @@ const SAMPLE_PROJECTS = [
     images: ["images/aurora/1.jpg", "images/aurora/2.jpg"],
     description:
       "현대적 입면 위를 흐르는 오로라 테마의 인터랙티브 모션 그래픽.",
+    // vimeo: "https://vimeo.com/showcase/11634672?video=1044260115",
   },
   {
     id: "2025-06-flame",
@@ -99,10 +188,10 @@ const SAMPLE_PROJECTS = [
   },
 ];
 
-// ========= 공용 컴포넌트 =========
+/* ========= Common components ========= */
 function Section({ id, className = "", children }) {
   return (
-    <section id={id} className={cx("relative z-10 py-20 md:py-28", className)}>
+    <section id={id} className={cx("relative z-10", className)}>
       <div className="mx-auto w-full max-w-7xl px-5 md:px-8">{children}</div>
     </section>
   );
@@ -198,7 +287,134 @@ function ProjectGallery({ item }) {
   );
 }
 
-// ========= 메인 =========
+/* ========= Portfolio (teamLab-like tiles) ========= */
+function getVimeoId(u) {
+  try {
+    if (!u) return "";
+    const url = new URL(u);
+    const qid = url.searchParams.get("video");
+    if (qid) return qid; // showcase?video=123
+    const parts = url.pathname.split("/").filter(Boolean);
+    const tail = parts.pop();
+    return /^\d+$/.test(tail) ? tail : "";
+  } catch {
+    return /^\d+$/.test(u) ? u : "";
+  }
+}
+const asVimeoPage = (urlOrId) => {
+  if (!urlOrId) return undefined;
+  if (/^https?:\/\//i.test(urlOrId)) {
+    const id = getVimeoId(urlOrId);
+    return id ? `https://vimeo.com/${id}` : urlOrId;
+  }
+  return `https://vimeo.com/${urlOrId}`;
+};
+const guessAspect = (item) => {
+  if (!item) return "16/9";
+  if (item.ratio === "9/16" || item.aspect === "9:16" || item.vertical) return "9/16";
+  return "16/9";
+};
+
+function useInViewport(rootMargin = "300px") {
+  const [inView, setInView] = useState(false);
+  const ref = React.useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && setInView(true)),
+      { root: null, rootMargin, threshold: 0.01 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [rootMargin]);
+  return { ref, inView };
+}
+
+function PortfolioTile({ item, onFallbackClick, t }) {
+  const hrefCandidate =
+    item.href || item.link || item.vimeo || item.url || item.video;
+  const vimeoId = getVimeoId(hrefCandidate);
+  const href = asVimeoPage(hrefCandidate);
+  const ratioClass = guessAspect(item) === "9/16" ? "aspect-[9/16]" : "aspect-video";
+  const { ref, inView } = useInViewport("300px");
+  const poster = resolveAsset(item.poster || item.cover);
+
+  const frameSrc =
+    inView && vimeoId
+      ? `https://player.vimeo.com/video/${vimeoId}?title=0&byline=0&portrait=0&controls=0&autopause=1&dnt=1`
+      : undefined;
+
+  const CardInner = (
+    <>
+      <div ref={ref} className={cx("relative w-full overflow-hidden", ratioClass)}>
+        {vimeoId ? (
+          <iframe
+            className="absolute inset-0 h-full w-full pointer-events-none"
+            src={frameSrc}
+            allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
+            loading="lazy"
+            title={item.title || "Vimeo"}
+          />
+        ) : poster ? (
+          <img
+            src={poster}
+            alt={item.title || "project"}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-white/60">
+            View ↗
+          </div>
+        )}
+      </div>
+
+      <div className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/25" />
+      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 p-3">
+        <span className="truncate text-sm font-medium text-white drop-shadow">
+          {item.title || "Untitled"}
+        </span>
+        <span className="text-xs text-white/85">{href ? t.vimeoLink : "Details"}</span>
+      </div>
+    </>
+  );
+
+  return href ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      title={item.title}
+      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/30"
+    >
+      {CardInner}
+    </a>
+  ) : (
+    <button
+      type="button"
+      onClick={() => onFallbackClick?.(item)}
+      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/30"
+      title={item.title}
+    >
+      {CardInner}
+    </button>
+  );
+}
+
+function PortfolioGrid({ items, onFallbackClick, t }) {
+  if (!items?.length) return null;
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((it, i) => (
+        <PortfolioTile key={it.id || i} item={it} onFallbackClick={onFallbackClick} t={t} />
+      ))}
+    </div>
+  );
+}
+
+/* ========= App ========= */
 export default function App() {
   useViewportCeil();
 
@@ -208,8 +424,23 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("All");
 
+  // i18n state: default EN; persist
+  const [lang, setLang] = useState("en");
+  const t = I18N[lang];
+
   useEffect(() => {
-    // ✅ 캐시 무력화 적용
+    const saved = localStorage.getItem("lang");
+    if (saved === "en" || saved === "ko") setLang(saved);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("lang", lang);
+  }, [lang]);
+
+  // pagination (6/page)
+  const PAGE = 6;
+  const [visibleCount, setVisibleCount] = useState(PAGE);
+
+  useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}projects.json?ts=${Date.now()}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -219,29 +450,45 @@ export default function App() {
   }, []);
 
   const tags = useMemo(() => {
-    const t = new Set(["All"]);
-    projects.forEach((p) => p.tags?.forEach((x) => t.add(x)));
-    return Array.from(t);
+    const s = new Set(["All"]);
+    projects.forEach((p) => p.tags?.forEach((x) => s.add(x)));
+    return Array.from(s);
   }, [projects]);
 
   const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
     return projects.filter((p) => {
       const okTag = tag === "All" || p.tags?.includes(tag);
-      const q = query.trim().toLowerCase();
-      const okQ =
-        !q ||
-        [p.title, p.client, p.summary, p.description, ...(p.tags || [])]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(q);
+      const hay = [
+        p.title,
+        p.client,
+        p.summary,
+        p.description,
+        p.href,
+        p.link,
+        p.vimeo,
+        p.url,
+        p.video,
+        ...(p.tags || []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const okQ = !q || hay.includes(q);
       return okTag && okQ;
     });
   }, [projects, tag, query]);
 
+  useEffect(() => {
+    setVisibleCount(PAGE);
+  }, [query, tag, projects]);
+
+  const paged = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const handleLoadMore = () => setVisibleCount((c) => Math.min(c + PAGE, filtered.length));
+
   return (
     <div className="relative min-h-screen bg-[#0b0e13] [color-scheme:dark]">
-      {/* ▼ 배경 (Ballpit) */}
+      {/* Background */}
       <div className="fixed inset-0 z-0">
         <BallPit
           className="pointer-events-auto"
@@ -259,10 +506,11 @@ export default function App() {
           }}
           ambientIntensity={0.3}
           lightIntensity={80}
+          logoUrl={`${import.meta.env.BASE_URL}images/logo.png`}
         />
       </div>
 
-      {/* 스크림/비네트 */}
+      {/* Vignette */}
       <div className="fixed inset-x-0 top-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/35" />
         <div className="absolute left-0 top-0 h-[55vh] w-[70vw] md:w-[50vw] -translate-x-[5%] -translate-y-[5%] rounded-[50%] blur-2xl bg-black/30" />
@@ -274,20 +522,41 @@ export default function App() {
           <a href="#" className="text-lg font-semibold tracking-tight text-white">
             TheRenderStudio
           </a>
-          <nav className="hidden gap-6 md:flex">
+
+          <nav className="hidden items-center gap-6 md:flex">
             <a href="#projects" className="text-sm text-white/80 hover:text-white">
-              Projects
-            </a>
-            <a href="#services" className="text-sm text-white/80 hover:text-white">
-              Services
-            </a>
-            <a href="#about" className="text-sm text-white/80 hover:text-white">
-              About
+              {t.navProjects}
             </a>
             <a href="#contact" className="text-sm text-white/80 hover:text-white">
-              Contact
+              {t.navContact}
             </a>
+
+            {/* Lang switch */}
+            <div className="ml-4 flex items-center gap-2">
+              <button
+                onClick={() => setLang("en")}
+                className={cx(
+                  "rounded-md px-2 py-1 text-xs",
+                  lang === "en" ? "bg-white text-black" : "text-white/80 hover:text-white"
+                )}
+                aria-pressed={lang === "en"}
+              >
+                EN
+              </button>
+              <span className="text-white/40">/</span>
+              <button
+                onClick={() => setLang("ko")}
+                className={cx(
+                  "rounded-md px-2 py-1 text-xs",
+                  lang === "ko" ? "bg-white text-black" : "text-white/80 hover:text-white"
+                )}
+                aria-pressed={lang === "ko"}
+              >
+                KR
+              </button>
+            </div>
           </nav>
+
           <div className="md:hidden">
             <button
               onClick={() => setMenuOpen((v) => !v)}
@@ -297,24 +566,42 @@ export default function App() {
             </button>
           </div>
         </div>
+
         {menuOpen && (
           <div className="border-t border-white/10 bg-black/40 px-5 py-3 md:hidden">
             <div className="flex flex-col gap-3">
-              {[
-                ["Projects", "#projects"],
-                ["Services", "#services"],
-                ["About", "#about"],
-                ["Contact", "#contact"],
-              ].map(([label, href]) => (
-                <a
-                  key={label}
-                  href={href}
-                  className="text-white/90"
-                  onClick={() => setMenuOpen(false)}
+              <a href="#projects" className="text-white/90" onClick={() => setMenuOpen(false)}>
+                {t.navProjects}
+              </a>
+              <a href="#contact" className="text-white/90" onClick={() => setMenuOpen(false)}>
+                {t.navContact}
+              </a>
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setLang("en");
+                    setMenuOpen(false);
+                  }}
+                  className={cx(
+                    "rounded-md px-2 py-1 text-xs border border-white/15",
+                    lang === "en" ? "bg-white text-black" : "text-white/80"
+                  )}
                 >
-                  {label}
-                </a>
-              ))}
+                  EN
+                </button>
+                <button
+                  onClick={() => {
+                    setLang("ko");
+                    setMenuOpen(false);
+                  }}
+                  className={cx(
+                    "rounded-md px-2 py-1 text-xs border border-white/15",
+                    lang === "ko" ? "bg-white text-black" : "text-white/80"
+                  )}
+                >
+                  KR
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -330,29 +617,81 @@ export default function App() {
                 className="max-w-2xl text-4xl font-bold leading-tight text-white md:text-6xl"
                 style={{ textShadow: "0 2px 14px rgba(0,0,0,.85), 0 6px 32px rgba(0,0,0,.55)" }}
               >
-                Creative Media for <span className="text-white">Exhibitions</span>
+                {t.heroTitle}
               </h1>
               <p
                 className="mt-4 max-w-2xl text-base text-white/90 md:text-lg"
                 style={{ textShadow: "0 1px 10px rgba(0,0,0,.75)" }}
               >
-                TheRenderStudio는 미디어아트·VFX·인터랙티브를 제작하는 팀입니다.
-                빠른 프로토타이핑과 깔끔한 마감으로 브랜드/전시 경험을 만듭니다.
+                {t.heroSubtitle}
               </p>
+
               <div className="mt-6 flex gap-3">
                 <a
                   href="#projects"
                   className="inline-block rounded-2xl px-5 py-2.5 text-sm font-medium text-white border border-white/15 bg-white/10 hover:bg-white/15"
                   style={{ textShadow: "0 1px 8px rgba(0,0,0,.6)" }}
                 >
-                  View Projects
+                  {t.btnViewProjects}
                 </a>
                 <a
                   href="#contact"
                   className="inline-block rounded-2xl px-5 py-2.5 text-sm font-medium text-white border border-white/15 bg-white/20 hover:bg-white/25"
                   style={{ textShadow: "0 1px 8px rgba(0,0,0,.6)" }}
                 >
-                  Get in touch
+                  {t.btnContact}
+                </a>
+              </div>
+
+              {/* SNS */}
+              <div className="mt-3 flex items-center gap-2">
+                <a
+                  href="https://vimeo.com/therenderstudio"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Vimeo"
+                  title="Vimeo"
+                  className="rounded-xl border border-white/15 bg-white/10 p-2 hover:bg-white/15 transition"
+                >
+                  <img
+                    src={resolveAsset("icons/vimeo.png")}
+                    alt="Vimeo"
+                    className="h-5 w-5"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </a>
+                <a
+                  href="https://www.instagram.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Instagram"
+                  title="Instagram"
+                  className="rounded-xl border border-white/15 bg-white/10 p-2 hover:bg-white/15 transition"
+                >
+                  <img
+                    src={resolveAsset("icons/instagram-glyph.svg")}
+                    alt="Instagram"
+                    className="h-5 w-5"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </a>
+                <a
+                  href="https://x.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="X"
+                  title="X"
+                  className="rounded-xl border border-white/15 bg-white/10 p-2 hover:bg-white/15 transition"
+                >
+                  <img
+                    src={resolveAsset("icons/x.svg")}
+                    alt="X"
+                    className="h-5 w-5"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </a>
               </div>
             </div>
@@ -360,135 +699,112 @@ export default function App() {
             <div className={cx("mt-6 w-full rounded-2xl p-5 md:mt-0 md:w-[420px]", glass)}>
               <p className="text-xs uppercase tracking-widest text-white/70">Expertise</p>
               <ul className="mt-2 grid list-disc grid-cols-2 gap-x-6 gap-y-1 pl-4 text-sm text-white/90 md:grid-cols-1">
-                <li>Advertising & Art Film Production</li>
-                <li>High-End Media Art</li>
-                <li>Immersive Brand Experiences</li>
-                <li>Interactive Installations</li>
-                <li>Realtime Visual Performance</li>
+                <li>Advertising & Artistic Film Production</li>
+                <li>Immersive Media Experiences</li>
+                <li>Interactive Media & Installations</li>
+                <li>Real-Time Visual Performances</li>
+                <li>AI-Generated Media</li>
               </ul>
             </div>
           </div>
         </div>
       </Section>
 
-      {/* PROJECTS → CircularGallery */}
-      <Section id="projects">
+      {/* SERVICES (toggle만 여기 한국어 적용) */}
+      <Section id="services" className="py-16">
+        <div className="grid gap-6 md:grid-cols-3">
+          {SERVICES(t).map((s) => (
+            <div key={s.t} className={cx("rounded-3xl p-6", glass)}>
+              <h3 className="text-xl font-semibold text-white">{s.t}</h3>
+              <p className="mt-2 text-white/75">{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* PROJECTS */}
+      <Section id="projects" className="pt-12 pb-16">
         <div className="mb-8 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
           <div>
             <h2
               className="text-3xl font-bold text-white md:text-4xl"
               style={{ textShadow: "0 2px 12px rgba(0,0,0,.75)" }}
             >
-              Recent Projects
+              {t.portfolioTitle}
             </h2>
             <p
               className="mt-2 max-w-2xl text-white/80"
               style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}
             >
-              최근 작업 중 일부를 소개합니다. 전체 포트폴리오는 문의 시 공유해 드립니다.
+              {t.portfolioDesc}
             </p>
           </div>
 
-          {/* 검색/태그 */}
+          {/* Search + tags */}
           <div className="flex w-full flex-col items-stretch gap-3 md:w-auto md:flex-row md:items-center">
             <input
               type="search"
-              placeholder="Search…"
+              placeholder={t.searchPlaceholder}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full rounded-2xl border border-white/15 bg-black/40 px-4 py-2 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 md:w-64"
             />
             <div className="flex flex-wrap gap-2">
-              {[...new Set(["All", ...projects.flatMap((p) => p.tags || [])])].map((t) => (
+              {[...new Set(["All", ...projects.flatMap((p) => p.tags || [])])].map((tg) => (
                 <button
-                  key={t}
-                  onClick={() => setTag(t)}
+                  key={tg}
+                  onClick={() => setTag(tg)}
                   className={
-                    t === tag
+                    tg === tag
                       ? "rounded-full px-3 py-1 text-xs bg-white text-black"
                       : "rounded-full px-3 py-1 text-xs bg-white/10 text-white/80 border border-white/15 hover:bg-white/15"
                   }
                 >
-                  {t}
+                  {tg === "All" ? t.tagAll : tg}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* 캐러셀 컨테이너는 고정 높이가 필요 */}
-        <div className="h-[520px] w-full">
-          <CircularGallery
-            items={filtered.map((p) => ({
-              image: resolveAsset(p.cover),
-              text: p.title,
-              payload: p,
-            }))}
-            bend={0.5}
-            textColor="#ffffff"
-            borderRadius={0.05}
-            font="bold 28px sans-serif"
-            scrollSpeed={2}
-            scrollEase={0.05}
-            onItemClick={(payload) => setActive(payload)}
-          />
-        </div>
-      </Section>
+        <PortfolioGrid items={paged} onFallbackClick={(it) => setActive(it)} t={t} />
 
-{/* SERVICES */}
-<Section id="services" className="py-16">
-  <div className="grid gap-6 md:grid-cols-3">
-    {[
-      { 
-        t: "Creative Direction", 
-        d: "아이디어를 경험으로 확장합니다. 콘셉트 기획부터 아트 디렉션, 프로토타이핑까지 — 브랜드와 공간의 서사를 설계합니다." 
-      },
-      { 
-        t: "Brand Experiences", 
-        d: "브랜드 아이덴티티를 감각적으로 시각화합니다. 광고·브랜드 필름 제작부터 인터랙티브 쇼케이스까지, 메시지를 예술적 경험으로 전환합니다." 
-      },
-      { 
-        t: "Media Art & Production", 
-        d: "하이엔드 미디어아트 제작과 엔진 기반 실시간 파이프라인을 결합해, 대규모 프로젝션·LED·센서/서버 연동까지 구현합니다. 공간 전체를 무대로 재탄생시키는 압도적 경험을 완성합니다." 
-      },
-    ].map((s) => (
-      <div key={s.t} className={cx("rounded-3xl p-6", glass)}>
-        <h3 className="text-xl font-semibold text-white">{s.t}</h3>
-        <p className="mt-2 text-white/75">{s.d}</p>
-      </div>
-    ))}
-  </div>
-</Section>
+        {visibleCount < filtered.length && (
+          <div className="mt-6 flex justify-center">
+            <Button onClick={handleLoadMore}>
+              {t.more} ({visibleCount}/{filtered.length})
+            </Button>
+          </div>
+        )}
+      </Section>
 
       {/* ABOUT + REEL */}
       <Section id="about" className="py-16">
         <div className="grid items-start gap-8 md:grid-cols-2">
           <div className={cx("rounded-3xl p-6", glass)}>
-            <h2 className="text-2xl font-semibold text-white">About</h2>
-            <p className="mt-3 text-white/85">
-              TheRenderStudio는 미디어아트와 인터랙티브 콘텐츠를 만드는 스튜디오입니다.
-              공간·스크린·관객의 참여를 연결해 브랜드와 전시의 이야기를 설계합니다.
-            </p>
+            <h2 className="text-2xl font-semibold text-white">{t.aboutTitle}</h2>
+            <p className="mt-3 text-white/85">{t.aboutP1}</p>
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-white/70">
-              <p>Founded — 2019</p>
-              <p>Seoul, KR</p>
-              <p>Team — Small</p>
-              <p>Partners — Museums · Agencies · Brands</p>
+              <p>{t.founded}</p>
+              <p>{t.location}</p>
+              <p>{t.team}</p>
+              <p>{t.partners}</p>
             </div>
           </div>
           <div className={cx("overflow-hidden rounded-3xl", glass)}>
-            <div className="aspect-video w-full bg-black/40">
+            {/* Vimeo vertical (auto thumbnail) */}
+            <div className="aspect-[9/16] w-full bg-black/40">
               <iframe
                 className="h-full w-full"
-                src="https://www.youtube.com/embed/JWkB0loxNEo?rel=0"
+                src="https://player.vimeo.com/video/1044260115?title=0&byline=0&portrait=0"
                 title="Showreel"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
                 allowFullScreen
               />
             </div>
             <div className="flex items-center justify-between p-4">
-              <span className="text-sm text-white/70">Showreel</span>
-              <Button as="a" href="#contact">Project Inquiry</Button>
+              <span className="text-sm text-white/70">{t.showreel}</span>
+              <Button as="a" href="#contact">{t.projectInquiry}</Button>
             </div>
           </div>
         </div>
@@ -498,19 +814,13 @@ export default function App() {
       <Section id="contact" className="py-16">
         <div className={cx("rounded-3xl p-8 text-center", glass)}>
           <h2 className="text-3xl font-bold text-white" style={{ textShadow: "0 2px 12px rgba(0,0,0,.75)" }}>
-            Let’s build something luminous.
+            {t.contactTitle}
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-white/85" style={{ textShadow: "0 1px 8px rgba(0,0,0,.55)" }}>
-            프로젝트 제안을 환영합니다. 초기 아이디어부터 구체적 기획까지, 요구하시는 일정과 예산에 최적화된 맞춤형 솔루션을 제공합니다.
+            {t.contactSubtitle}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Button as="a" href="mailto:hello@therenderstudio.com">hello@therenderstudio.com</Button>
-            <Button as="a" href="https://www.instagram.com/" target="_blank" rel="noreferrer" className="bg-white/20 hover:bg-white/25">
-              Instagram
-            </Button>
-            <Button as="a" href="https://vimeo.com/" target="_blank" rel="noreferrer" className="bg-white/20 hover:bg-white/25">
-              Vimeo
-            </Button>
           </div>
         </div>
       </Section>
@@ -520,15 +830,13 @@ export default function App() {
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-5 text-sm text-white/60 md:flex-row md:px-8">
           <p>© {new Date().getFullYear()} TheRenderStudio — Media Art & Interactive</p>
           <div className="flex items-center gap-4">
-            <a href="#projects" className="hover:text-white">Projects</a>
-            <a href="#services" className="hover:text-white">Services</a>
-            <a href="#about" className="hover:text-white">About</a>
-            <a href="#contact" className="hover:text-white">Contact</a>
+            <a href="#projects" className="hover:text-white">{t.footerProjects}</a>
+            <a href="#contact" className="hover:text-white">{t.footerContact}</a>
           </div>
         </div>
       </footer>
 
-      {/* PROJECT MODAL */}
+      {/* MODAL */}
       <Modal open={!!active} onClose={() => setActive(null)}>
         {active && <ProjectGallery item={active} />}
       </Modal>
