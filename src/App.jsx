@@ -529,7 +529,7 @@ export default function App() {
         loading="lazy"
         decoding="async"
       />
-      <span>TheRenderStudio</span>
+      <span>The Render Studio</span>
     </a>
 
           <nav className="hidden items-center gap-6 md:flex">
