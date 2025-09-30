@@ -439,7 +439,7 @@ export default function App() {
   }, [lang]);
 
   // pagination (6/page)
-  const PAGE = 6;
+  const PAGE = 9;
   const [visibleCount, setVisibleCount] = useState(PAGE);
 
   useEffect(() => {
