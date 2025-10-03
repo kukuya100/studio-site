@@ -77,10 +77,6 @@ const I18N = {
     aboutTitle: "About",
     aboutP1:
       "TheRenderStudio creates media art and interactive content—bridging spaces, screens, and participation to craft stories for brands and exhibitions.",
-    founded: "Founded — 2019",
-    location: "Seoul, KR",
-    team: "Team — Small",
-    partners: "Partners — Museums · Agencies · Brands",
     showreel: "Showreel",
     projectInquiry: "Project Inquiry",
     contactTitle: "Let’s build something luminous.",
@@ -118,10 +114,6 @@ const I18N = {
     aboutTitle: "About",
     aboutP1:
       "TheRenderStudio creates media art and interactive content—bridging spaces, screens, and participation to craft stories for brands and exhibitions.",
-    founded: "Founded — 2019",
-    location: "Seoul, KR",
-    team: "Team — Small",
-    partners: "Partners — Museums · Agencies · Brands",
     showreel: "Showreel",
     projectInquiry: "Project Inquiry",
     contactTitle: "Let’s build something luminous.",
